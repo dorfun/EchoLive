@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>EchoLive — Live Audience Subtitles & Audio</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background: radial-gradient(circle at 50% -20%, #15142a 0%, #09090b 80%);
+      min-height: 100vh;
+      touch-action: manipulation;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #18181b;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #3f3f46;
+      border-radius: 9999px;
+    }
+    @keyframes soundwave {
+      0%, 100% { height: 4px; }
+      50% { height: 18px; }
+    }
+    .sound-bar {
+      animation: soundwave 1.2s infinite ease-in-out;
+    }
+    .sound-bar:nth-child(2) { animation-delay: 0.2s; }
+    .sound-bar:nth-child(3) { animation-delay: 0.4s; }
+    .sound-bar:nth-child(4) { animation-delay: 0.1s; }
+    .sound-bar:nth-child(5) { animation-delay: 0.3s; }
+  </style>
+</head>
+<body class="text-zinc-100 flex flex-col h-screen overflow-hidden selection:bg-sky-500 selection:text-white">
+
+  <!-- Mobile-Optimized Header -->
+  <header class="border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-md px-4 py-3 shrink-0 z-30">
+    <div class="max-w-3xl mx-auto flex items-center justify-between">
+      
+      <!-- Room & Status -->
+      <div class="flex items-center space-x-2.5">
+        <a href="/" class="flex items-center space-x-1.5">
+          <div class="w-7 h-7 rounded-lg bg-sky-600 flex items-center justify-center text-white text-xs font-bold shadow-md shadow-sky-600/30">
+            🔊
+          </div>
+          <span class="font-bold tracking-tight text-white text-sm hidden xs:inline">EchoLive</span>
+        </a>
+
+        <!-- Room Tag -->
+        <span class="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-[11px] font-mono text-zinc-300">
+          ROOM: <strong id="room-badge" class="text-sky-400">---</strong>
+        </span>
+
+        <!-- Host Connection Status Badge -->
+        <span id="conn-badge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+          Connecting
+        </span>
+      </div>
+
+      <!-- Controls: Language Selector -->
+      <div class="flex items-center space-x-2">
+        <div class="relative">
+          <select id="lang-select" class="appearance-none bg-zinc-900 border border-zinc-700/80 hover:border-sky-500 text-white text-xs font-semibold py-1.5 pl-3 pr-8 rounded-xl outline-none transition-all cursor-pointer">
+            <option value="gl">🔵 Galego</option>
+            <option value="es">🇪🇸 Castelán</option>
+            <option value="pt">🇵🇹 Português</option>
+            <option value="fr">🇫🇷 Français</option>
+            <option value="de">🇩🇪 Deutsch</option>
+          </select>
+          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-zinc-400">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Audio Unlock Hero Bar (Crucial for Mobile Safari & Chrome Autoplay) -->
+  <div id="audio-unlock-banner" class="bg-gradient-to-r from-sky-600 via-indigo-600 to-sky-700 text-white px-4 py-3 shrink-0 shadow-lg">
+    <div class="max-w-3xl mx-auto flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0 text-lg">
+          ▶️
+        </div>
+        <div>
+          <div class="text-xs font-bold uppercase tracking-wider text-sky-100">Audio Muted by Browser</div>
+          <div class="text-[11px] text-white/90">Tap to start live translated audio stream.</div>
+        </div>
+      </div>
+      <button id="start-audio-btn" class="px-4 py-2 rounded-xl bg-white text-zinc-950 font-bold text-xs shadow-md hover:bg-zinc-100 active:scale-95 transition-all shrink-0 cursor-pointer">
+        Start Audio 🔊
+      </button>
+    </div>
+  </div>
+
+  <!-- Audio Playing Status Bar (Shown once audio is unlocked) -->
+  <div id="audio-active-bar" class="hidden bg-zinc-900/90 border-b border-zinc-800/80 px-4 py-2 shrink-0">
+    <div class="max-w-3xl mx-auto flex items-center justify-between text-xs">
+      
+      <!-- Audio Visualizer Indicator -->
+      <div class="flex items-center gap-2">
+        <div class="flex items-center gap-0.5 h-4 w-6 justify-center">
+          <div class="w-0.5 bg-sky-400 rounded-full sound-bar"></div>
+          <div class="w-0.5 bg-sky-400 rounded-full sound-bar"></div>
+          <div class="w-0.5 bg-sky-400 rounded-full sound-bar"></div>
+          <div class="w-0.5 bg-sky-400 rounded-full sound-bar"></div>
+          <div class="w-0.5 bg-sky-400 rounded-full sound-bar"></div>
+        </div>
+        <span id="audio-status-text" class="text-sky-400 font-medium">Audio Active (Stream Mode)</span>
+      </div>
+
+      <!-- Mode Toggle & Font Size -->
+      <div class="flex items-center gap-2">
+        <!-- Audio Mode Selector (Stream vs Local) -->
+        <div class="flex rounded-lg bg-zinc-950 p-0.5 border border-zinc-800 text-[11px]">
+          <button id="mode-stream-btn" class="px-2 py-0.5 rounded-md bg-sky-600 text-white font-medium transition-all" title="Consistent server-synthesized voice">
+            Live Stream
+          </button>
+          <button id="mode-local-btn" class="px-2 py-0.5 rounded-md text-zinc-400 hover:text-white font-medium transition-all" title="Local browser speech synthesis">
+            Local Voice
+          </button>
+        </div>
+
+        <!-- Font size toggle -->
+        <button id="font-size-btn" class="p-1 rounded bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold" title="Toggle Subtitle Size">
+          aA
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Host Offline Warning Overlay -->
+  <div id="host-offline-banner" class="hidden bg-red-500/10 border-b border-red-500/30 px-4 py-2.5 text-center text-xs text-red-300 shrink-0">
+    ⚠️ <strong>Host is currently offline.</strong> Waiting for speaker to resume or reconnect...
+  </div>
+
+  <!-- Subtitle Canvas (Main Scrollable View) -->
+  <main class="flex-1 overflow-hidden relative flex flex-col max-w-3xl w-full mx-auto p-4">
+    
+    <!-- Subtitle Feed Container -->
+    <div id="subtitles-feed" class="flex-1 overflow-y-auto custom-scroll space-y-4 pb-20 pr-1 text-base sm:text-lg leading-relaxed">
+      
+      <!-- Welcome Empty State -->
+      <div id="empty-state" class="h-full flex flex-col items-center justify-center text-center p-6 text-zinc-500">
+        <div class="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-2xl mb-3">
+          🎧
+        </div>
+        <h3 class="text-base font-semibold text-zinc-300">Connected to Broadcast</h3>
+        <p class="text-xs text-zinc-500 mt-1 max-w-xs">
+          Translated live subtitles will appear here automatically when the host speaks.
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Live Tentative Interim Subtitle Bubble (Sticky Floating at Bottom) -->
+    <div id="interim-bubble" class="hidden absolute bottom-4 left-4 right-4 bg-zinc-900/95 backdrop-blur-md border border-sky-500/40 rounded-2xl p-3.5 shadow-2xl transition-all duration-150 animate-in fade-in">
+      <div class="flex items-start gap-2.5">
+        <span class="w-2 h-2 rounded-full bg-sky-400 animate-ping shrink-0 mt-1.5"></span>
+        <div class="flex-1">
+          <div class="text-[10px] font-bold text-sky-400 uppercase tracking-widest">Translating in real time...</div>
+          <p id="interim-text" class="text-zinc-100 font-medium text-sm sm:text-base italic leading-snug"></p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Client-Side Listener Logic -->
+  <script>
+    // -------------------------------------------------------------
+    // URL Params & State
+    // -------------------------------------------------------------
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomCode = (urlParams.get('room') || '').toUpperCase().trim();
+
+    if (!roomCode) {
+      alert('Room code is missing! Redirecting to lobby.');
+      window.location.href = '/';
+    }
+
+    document.getElementById('room-badge').textContent = roomCode;
+
+    let selectedLang = localStorage.getItem('echolive_listener_lang') || 'gl';
+    let audioMode = 'stream'; // 'stream' (Default) or 'local'
+    let isAudioUnlocked = false;
+    let ws = null;
+    let fontSizeLevel = 1; // 0 = normal, 1 = large, 2 = extra large
+
+    // Audio Engine variables
+    let audioContext = null;
+    let audioQueue = [];
+    let isPlayingAudio = false;
+
+    // Elements
+    const connBadge = document.getElementById('conn-badge');
+    const langSelect = document.getElementById('lang-select');
+    const audioUnlockBanner = document.getElementById('audio-unlock-banner');
+    const audioActiveBar = document.getElementById('audio-active-bar');
+    const audioStatusText = document.getElementById('audio-status-text');
+    const hostOfflineBanner = document.getElementById('host-offline-banner');
+    const subtitlesFeed = document.getElementById('subtitles-feed');
+    const emptyState = document.getElementById('empty-state');
+    const interimBubble = document.getElementById('interim-bubble');
+    const interimText = document.getElementById('interim-text');
+    const startAudioBtn = document.getElementById('start-audio-btn');
+    const modeStreamBtn = document.getElementById('mode-stream-btn');
+    const modeLocalBtn = document.getElementById('mode-local-btn');
+    const fontSizeBtn = document.getElementById('font-size-btn');
+
+    // Initialize UI language
+    langSelect.value = selectedLang;
+
+    // -------------------------------------------------------------
+    // Audio Context & Streaming Engine (Dual Mode)
+    // -------------------------------------------------------------
+    function unlockAudio() {
+      if (isAudioUnlocked) return;
+
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          audioContext = new AudioCtx();
+          if (audioContext.state === 'suspended') {
+            audioContext.resume();
+          }
+
+          // Play silent 0.05s buffer to fully unblock iOS Safari / Android Chrome
+          const buffer = audioContext.createBuffer(1, 1, 22050);
+          const source = audioContext.createBufferSource();
+          source.buffer = buffer;
+          source.connect(audioContext.destination);
+          source.start(0);
+        }
+
+        // Also test/prime SpeechSynthesis for local mode
+        if (window.speechSynthesis) {
+          window.speechSynthesis.getVoices();
+        }
+
+        isAudioUnlocked = true;
+        audioUnlockBanner.classList.add('hidden');
+        audioActiveBar.classList.remove('hidden');
+
+        // Play any audio queued while unlocking
+        processAudioQueue();
+      } catch (e) {
+        console.error('AudioContext unlock failed:', e);
+      }
+    }
+
+    startAudioBtn.addEventListener('click', unlockAudio);
+
+    // Audio Queue Processor for 'Live Audio Stream' Mode
+    async function playAudioChunkBase64(base64Data) {
+      if (!isAudioUnlocked || !audioContext) {
+        // Queue chunk to play as soon as listener taps Start Audio
+        audioQueue.push(base64Data);
+        return;
+      }
+
+      audioQueue.push(base64Data);
+      if (!isPlayingAudio) {
+        processAudioQueue();
+      }
+    }
+
+    async function processAudioQueue() {
+      if (audioQueue.length === 0 || !audioContext) {
+        isPlayingAudio = false;
+        return;
+      }
+
+      isPlayingAudio = true;
+      const base64 = audioQueue.shift();
+
+      try {
+        // Convert Base64 to ArrayBuffer
+        const binaryString = atob(base64);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        const audioBuffer = await audioContext.decodeAudioData(bytes.buffer.slice(0));
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioContext.destination);
+
+        source.onended = () => {
+          processAudioQueue();
+        };
+
+        source.start(0);
+      } catch (err) {
+        console.warn('Audio decoding error:', err);
+        // Continue to next chunk
+        processAudioQueue();
+      }
+    }
+
+    // Local SpeechSynthesis Fallback for 'Local Voice' Mode
+    function speakLocally(text, lang) {
+      if (!window.speechSynthesis) return;
+
+      window.speechSynthesis.cancel(); // Cancel any ongoing speech for responsiveness
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = lang === 'gl' ? 'gl-ES' : (lang === 'es' ? 'es-ES' : lang);
+      utterance.rate = 1.05;
+
+      const voices = window.speechSynthesis.getVoices();
+      const matchingVoice = voices.find(v => v.lang.startsWith(utterance.lang));
+      if (matchingVoice) utterance.voice = matchingVoice;
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    // Mode Toggle Buttons
+    modeStreamBtn.addEventListener('click', () => {
+      audioMode = 'stream';
+      modeStreamBtn.className = 'px-2 py-0.5 rounded-md bg-sky-600 text-white font-medium transition-all';
+      modeLocalBtn.className = 'px-2 py-0.5 rounded-md text-zinc-400 hover:text-white font-medium transition-all';
+      audioStatusText.textContent = 'Audio Active (Stream Mode)';
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'change_mode', mode: 'stream' }));
+      }
+    });
+
+    modeLocalBtn.addEventListener('click', () => {
+      audioMode = 'local';
+      modeLocalBtn.className = 'px-2 py-0.5 rounded-md bg-sky-600 text-white font-medium transition-all';
+      modeStreamBtn.className = 'px-2 py-0.5 rounded-md text-zinc-400 hover:text-white font-medium transition-all';
+      audioStatusText.textContent = 'Audio Active (Local Voice Mode)';
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'change_mode', mode: 'local' }));
+      }
+    });
+
+    // -------------------------------------------------------------
+    // WebSocket Connection & Real-Time Subtitle Streaming
+    // -------------------------------------------------------------
+    function connectWebSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}?room=${roomCode}&role=listener&lang=${selectedLang}&mode=${audioMode}`;
+
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        connBadge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+        connBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Connected';
+        hostOfflineBanner.classList.add('hidden');
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          // Room info & Host status
+          if (data.type === 'listener_ready') {
+            if (!data.hostOnline) {
+              hostOfflineBanner.classList.remove('hidden');
+            }
+          }
+
+          if (data.type === 'host_status') {
+            if (data.status === 'offline') {
+              hostOfflineBanner.classList.remove('hidden');
+            } else if (data.status === 'online') {
+              hostOfflineBanner.classList.add('hidden');
+            }
+          }
+
+          if (data.type === 'host_offline') {
+            hostOfflineBanner.classList.remove('hidden');
+            connBadge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-500/10 text-red-400 border border-red-500/20';
+            connBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> Host Left';
+          }
+
+          // Real-time Subtitle
+          if (data.type === 'subtitle') {
+            if (data.isFinal) {
+              interimBubble.classList.add('hidden');
+              appendFinalSubtitle(data.text, data.original);
+
+              // If in local voice mode, synthesize locally
+              if (audioMode === 'local' && isAudioUnlocked) {
+                speakLocally(data.text, selectedLang);
+              }
+            } else {
+              // Interim tentative subtitle
+              showInterimSubtitle(data.text);
+            }
+          }
+
+          // Live Audio Stream Chunk from Server
+          if (data.type === 'audio_chunk') {
+            if (audioMode === 'stream' && data.audioBase64) {
+              playAudioChunkBase64(data.audioBase64);
+            }
+          }
+
+        } catch (e) {
+          console.error('Error handling WS message:', e);
+        }
+      };
+
+      ws.onclose = () => {
+        connBadge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20';
+        connBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Reconnecting';
+        setTimeout(connectWebSocket, 3000);
+      };
+
+      ws.onerror = (err) => {
+        console.warn('Listener WS Error:', err);
+      };
+    }
+
+    // -------------------------------------------------------------
+    // Subtitle Rendering & Auto-Scroll
+    // -------------------------------------------------------------
+    function showInterimSubtitle(text) {
+      if (!text || !text.trim()) {
+        interimBubble.classList.add('hidden');
+        return;
+      }
+      interimText.textContent = text;
+      interimBubble.classList.remove('hidden');
+    }
+
+    function appendFinalSubtitle(translatedText, originalText) {
+      if (emptyState) emptyState.remove();
+
+      const item = document.createElement('div');
+      item.className = 'p-3.5 sm:p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800/80 shadow-md animate-in fade-in slide-in-from-bottom-2 duration-200';
+
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      item.innerHTML = `
+        <div class="flex items-center justify-between text-[11px] text-zinc-500 mb-1.5">
+          <span class="font-mono">${timeStr}</span>
+          <span class="text-zinc-600 truncate max-w-[200px]" title="Original: ${escapeHtml(originalText || '')}">Original: ${escapeHtml(originalText || '')}</span>
+        </div>
+        <p class="subtitle-text text-zinc-100 font-semibold leading-relaxed">${escapeHtml(translatedText)}</p>
+      `;
+
+      subtitlesFeed.appendChild(item);
+      applyFontSize();
+
+      // Smooth auto-scroll to bottom
+      subtitlesFeed.scrollTop = subtitlesFeed.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      const p = document.createElement('p');
+      p.innerText = str;
+      return p.innerHTML;
+    }
+
+    // Language Change Handler
+    langSelect.addEventListener('change', () => {
+      selectedLang = langSelect.value;
+      localStorage.setItem('echolive_listener_lang', selectedLang);
+
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'change_language',
+          lang: selectedLang
+        }));
+      }
+    });
+
+    // Font size switcher
+    fontSizeBtn.addEventListener('click', () => {
+      fontSizeLevel = (fontSizeLevel + 1) % 3;
+      applyFontSize();
+    });
+
+    function applyFontSize() {
+      const texts = document.querySelectorAll('.subtitle-text');
+      texts.forEach(el => {
+        el.classList.remove('text-sm', 'text-base', 'text-xl', 'text-2xl');
+        if (fontSizeLevel === 0) {
+          el.classList.add('text-base');
+        } else if (fontSizeLevel === 1) {
+          el.classList.add('text-lg', 'sm:text-xl');
+        } else {
+          el.classList.add('text-xl', 'sm:text-2xl');
+        }
+      });
+    }
+
+    // Auto-connect
+    connectWebSocket();
+  </script>
+</body>
+</html>

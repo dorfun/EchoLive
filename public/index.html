@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EchoLive — Real-Time Live Speech Translation & Audio Broadcast</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#312e81'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background: radial-gradient(circle at 50% -20%, #1e1b4b 0%, #09090b 70%);
+      min-height: 100vh;
+    }
+  </style>
+</head>
+<body class="text-zinc-100 flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
+
+  <!-- Navigation Bar -->
+  <header class="border-b border-zinc-800/80 bg-zinc-950/60 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 via-indigo-600 to-sky-400 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z" />
+          </svg>
+        </div>
+        <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">EchoLive</span>
+        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">v1.0</span>
+      </div>
+
+      <div class="flex items-center space-x-4">
+        <span class="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-medium bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          Engine Ready
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16 flex-1 flex flex-col items-center justify-center text-center">
+    
+    <!-- Badge -->
+    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-800/80 border border-zinc-700/60 text-xs sm:text-sm text-zinc-300 mb-6 shadow-inner">
+      <span class="text-indigo-400">✨ English Speech</span>
+      <span class="text-zinc-600">→</span>
+      <span class="text-sky-400">Galego 🔵</span>
+      <span class="text-zinc-600">&</span>
+      <span class="text-amber-400">Castelán 🇪🇸</span>
+    </div>
+
+    <!-- Main Headline -->
+    <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-white max-w-3xl leading-[1.15]">
+      Real-Time Live Translation <br class="hidden sm:inline">
+      <span class="bg-gradient-to-r from-indigo-400 via-sky-300 to-emerald-400 bg-clip-text text-transparent">
+        & Audio Broadcast
+      </span>
+    </h1>
+
+    <p class="mt-5 text-base sm:text-lg text-zinc-400 max-w-2xl">
+      Speak in English. Your audience instantly reads live synchronized subtitles and listens to crystal-clear translated audio on any phone or desktop via a dynamic QR code.
+    </p>
+
+    <!-- Room Action Grid -->
+    <div class="mt-12 w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+      
+      <!-- Card 1: Start Broadcast (Host) -->
+      <div class="group relative rounded-2xl bg-zinc-900/90 border border-zinc-800 p-6 sm:p-8 hover:border-indigo-500/50 transition-all duration-300 shadow-xl hover:shadow-indigo-500/10 flex flex-col justify-between">
+        <div class="absolute -top-3 left-6 px-3 py-0.5 rounded-full bg-indigo-600 text-[11px] font-bold tracking-wide uppercase text-white shadow">
+          Speaker / Host
+        </div>
+
+        <div>
+          <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mb-5 group-hover:scale-105 transition-transform">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/>
+            </svg>
+          </div>
+          <h2 class="text-xl font-bold text-white">Start a Broadcast</h2>
+          <p class="mt-2 text-sm text-zinc-400 leading-relaxed">
+            Create an ephemeral live session. Transcribe your speech, generate real-time translations with Gemini Flash or Native engine, and share the live QR code.
+          </p>
+        </div>
+
+        <div class="mt-8 pt-6 border-t border-zinc-800/80">
+          <button id="create-room-btn" class="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-sm shadow-lg shadow-indigo-600/30 transition-all cursor-pointer">
+            <span>Create New Room</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Card 2: Join as Listener -->
+      <div class="group relative rounded-2xl bg-zinc-900/90 border border-zinc-800 p-6 sm:p-8 hover:border-sky-500/50 transition-all duration-300 shadow-xl hover:shadow-sky-500/10 flex flex-col justify-between">
+        <div class="absolute -top-3 left-6 px-3 py-0.5 rounded-full bg-sky-600 text-[11px] font-bold tracking-wide uppercase text-white shadow">
+          Audience / Listener
+        </div>
+
+        <div>
+          <div class="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center mb-5 group-hover:scale-105 transition-transform">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+            </svg>
+          </div>
+          <h2 class="text-xl font-bold text-white">Join a Session</h2>
+          <p class="mt-2 text-sm text-zinc-400 leading-relaxed">
+            Enter a 6-character room code to receive real-time translated subtitles and continuous live audio stream in your preferred language.
+          </p>
+        </div>
+
+        <div class="mt-8 pt-6 border-t border-zinc-800/80">
+          <form id="join-form" class="flex gap-2">
+            <input 
+              type="text" 
+              id="room-input" 
+              maxlength="6"
+              placeholder="e.g. ECHO88" 
+              class="w-full bg-zinc-950 border border-zinc-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-white font-mono uppercase tracking-widest text-center px-4 py-3 rounded-xl text-sm outline-none transition-colors"
+              required
+            >
+            <button type="submit" class="px-5 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-sm shadow-lg shadow-sky-600/30 transition-all shrink-0">
+              Join
+            </button>
+          </form>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Feature Pillars -->
+    <div class="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl text-left">
+      <div class="p-4 rounded-xl bg-zinc-900/40 border border-zinc-800/60">
+        <div class="text-indigo-400 text-lg font-bold mb-1">⚡ Ultra-Low Latency</div>
+        <p class="text-xs text-zinc-400">Continuous speech recognition with real-time interim tentative captions and confirmed final phrases.</p>
+      </div>
+
+      <div class="p-4 rounded-xl bg-zinc-900/40 border border-zinc-800/60">
+        <div class="text-sky-400 text-lg font-bold mb-1">🔊 Consistent Audio Stream</div>
+        <p class="text-xs text-zinc-400">Server-synthesized audio streams eliminate missing Galego voices on iOS and Android devices.</p>
+      </div>
+
+      <div class="p-4 rounded-xl bg-zinc-900/40 border border-zinc-800/60">
+        <div class="text-emerald-400 text-lg font-bold mb-1">🔒 Zero DB / Ephemeral</div>
+        <p class="text-xs text-zinc-400">Sessions exist strictly in-memory. Terminating the broadcast destroys all room data and connections immediately.</p>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-zinc-800/80 py-6 text-center text-xs text-zinc-500">
+    <p>EchoLive — Built with Node.js, WebSockets, Web Speech API & Gemini Flash Engine.</p>
+  </footer>
+
+  <script>
+    // Generate clean 6-character room code
+    function createRandomCode() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let code = '';
+      for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return code;
+    }
+
+    // Host Button Click
+    document.getElementById('create-room-btn').addEventListener('click', () => {
+      const roomCode = createRandomCode();
+      window.location.href = `/host?room=${roomCode}`;
+    });
+
+    // Listener Join Form Submit
+    document.getElementById('join-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = document.getElementById('room-input');
+      const roomCode = input.value.trim().toUpperCase();
+      if (roomCode.length >= 3) {
+        window.location.href = `/listen?room=${roomCode}`;
+      }
+    });
+  </script>
+</body>
+</html>

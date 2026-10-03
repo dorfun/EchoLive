@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EchoLive — Host Broadcast Studio</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- QRCode.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background: radial-gradient(circle at 50% 0%, #171728 0%, #09090c 80%);
+      min-height: 100vh;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #18181b;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #3f3f46;
+      border-radius: 9999px;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.15); opacity: 0.4; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .recording-pulse {
+      animation: pulse-ring 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="text-zinc-100 flex flex-col min-h-screen selection:bg-indigo-500 selection:text-white">
+
+  <!-- Header -->
+  <header class="border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      
+      <!-- Brand & Room Status -->
+      <div class="flex items-center space-x-3">
+        <a href="/" class="flex items-center space-x-2">
+          <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-indigo-600/30">
+            🎙️
+          </div>
+          <span class="font-bold tracking-tight text-white hidden sm:inline">EchoLive</span>
+        </a>
+
+        <div class="h-4 w-px bg-zinc-800 hidden sm:block"></div>
+
+        <!-- Room Code Tag -->
+        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-700/80 font-mono text-xs">
+          <span class="text-zinc-400">ROOM:</span>
+          <span id="room-code-badge" class="font-bold text-indigo-400 tracking-wider">------</span>
+          <button id="copy-code-btn" title="Copy Room Code" class="ml-1 text-zinc-400 hover:text-white transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Status Badge -->
+        <span id="host-status-badge" class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+          Connecting...
+        </span>
+      </div>
+
+      <!-- Right controls: Listeners, Settings & End Session -->
+      <div class="flex items-center space-x-3">
+        
+        <!-- Active Listener Counter -->
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs sm:text-sm">
+          <span class="text-zinc-400">👥</span>
+          <span id="listener-count-num" class="font-bold text-white">0</span>
+          <span class="text-zinc-400 hidden sm:inline">Listeners</span>
+        </div>
+
+        <!-- Settings Button -->
+        <button id="open-settings-btn" class="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white transition-all cursor-pointer" title="Translation Settings">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+        </button>
+
+        <!-- End Session Button -->
+        <button id="end-session-btn" class="px-3.5 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/30 text-xs sm:text-sm font-semibold transition-all cursor-pointer">
+          End Session
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 flex flex-col gap-6">
+
+    <!-- Broadcast Control Banner -->
+    <div class="rounded-2xl bg-zinc-900/90 border border-zinc-800 p-4 sm:p-6 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+      
+      <!-- Mic Status & Big Toggle Button -->
+      <div class="flex items-center space-x-5 w-full md:w-auto">
+        <div class="relative">
+          <button id="mic-toggle-btn" class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center transition-all shadow-lg cursor-pointer">
+            <svg id="mic-icon" class="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/>
+            </svg>
+          </button>
+          <div id="mic-pulse-ring" class="hidden absolute inset-0 rounded-2xl bg-red-500 recording-pulse -z-10"></div>
+        </div>
+
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 id="mic-status-title" class="text-lg sm:text-xl font-bold text-white">Microphone Off</h2>
+            <span id="engine-mode-pill" class="text-[11px] px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-400 border border-zinc-700 font-medium">Free Engine</span>
+          </div>
+          <p id="mic-status-desc" class="text-xs sm:text-sm text-zinc-400 mt-0.5">Click the microphone to start continuous live speech capture.</p>
+        </div>
+      </div>
+
+      <!-- Active Languages Monitor in Room -->
+      <div class="w-full md:w-auto flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-zinc-950/70 p-3 sm:p-4 rounded-xl border border-zinc-800">
+        <div>
+          <div class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Listener Languages</div>
+          <div class="text-[11px] text-zinc-500">Demanded by active audience:</div>
+        </div>
+        <div id="active-languages-tags" class="flex flex-wrap gap-2">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 text-xs font-medium">
+            <span>🔵 Galego</span>
+            <span class="bg-indigo-500/20 px-1.5 py-0.2 rounded font-mono text-[10px] text-white" id="count-gl">0</span>
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/20 text-xs font-medium">
+            <span>🇪🇸 Castelán</span>
+            <span class="bg-amber-500/20 px-1.5 py-0.2 rounded font-mono text-[10px] text-white" id="count-es">0</span>
+          </span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Two-Column Workspace: Left Monitor, Right QR Sharing -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+      
+      <!-- Left Column (2 Cols): Live Transcript & Translated Feeds -->
+      <div class="lg:col-span-2 flex flex-col gap-6">
+        
+        <!-- Live English Input Monitor -->
+        <div class="rounded-2xl bg-zinc-900/90 border border-zinc-800 p-5 shadow-xl flex flex-col h-80 sm:h-96">
+          <div class="flex items-center justify-between pb-3 border-b border-zinc-800">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <h3 class="font-bold text-sm text-white">Live English Speech Input (Speaker)</h3>
+            </div>
+            <span class="text-xs text-zinc-500 font-mono">en-US Continuous</span>
+          </div>
+
+          <!-- Transcript Scroll Area -->
+          <div id="english-transcript-box" class="flex-1 overflow-y-auto custom-scroll py-4 space-y-3 font-sans text-sm text-zinc-300">
+            <div class="text-zinc-600 italic text-xs">Waiting for speech... Speak into your microphone once broadcast is started.</div>
+          </div>
+
+          <!-- Interim tentative phrase preview -->
+          <div id="english-interim-box" class="pt-3 border-t border-zinc-800/80 min-h-[44px] flex items-center">
+            <span class="text-zinc-500 text-xs italic">Live tentative:</span>
+            <span id="interim-text-content" class="ml-2 text-indigo-400 font-medium text-sm italic"></span>
+          </div>
+        </div>
+
+        <!-- Translated Monitor Tabs (Galego / Castelán) -->
+        <div class="rounded-2xl bg-zinc-900/90 border border-zinc-800 p-5 shadow-xl flex flex-col h-72 sm:h-80">
+          <div class="flex items-center justify-between pb-3 border-b border-zinc-800">
+            <div class="flex items-center gap-3">
+              <h3 class="font-bold text-sm text-white">Translated Live Subtitles</h3>
+              <div class="flex rounded-lg bg-zinc-950 p-1 border border-zinc-800 text-xs">
+                <button id="tab-gl" class="px-2.5 py-0.5 rounded-md bg-indigo-600 text-white font-semibold transition-all">🔵 Galego</button>
+                <button id="tab-es" class="px-2.5 py-0.5 rounded-md text-zinc-400 hover:text-white font-semibold transition-all">🇪🇸 Castelán</button>
+              </div>
+            </div>
+            <span class="text-xs text-indigo-400 font-medium">Broadcast Synced</span>
+          </div>
+
+          <!-- Translated Feeds -->
+          <div id="translated-feed-gl" class="flex-1 overflow-y-auto custom-scroll py-3 space-y-2 text-sm text-zinc-200">
+            <div class="text-zinc-600 italic text-xs">As túas frases traducidas ao galego aparecerán aquí en tempo real.</div>
+          </div>
+
+          <div id="translated-feed-es" class="hidden flex-1 overflow-y-auto custom-scroll py-3 space-y-2 text-sm text-zinc-200">
+            <div class="text-zinc-600 italic text-xs">Tus frases traducidas al castellano aparecerán aquí en tiempo real.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column (1 Col): Dynamic QR & Mobile Connect -->
+      <div class="flex flex-col gap-6">
+        
+        <!-- QR Code Card -->
+        <div class="rounded-2xl bg-zinc-900/90 border border-zinc-800 p-6 shadow-xl flex flex-col items-center text-center">
+          <h3 class="font-bold text-base text-white">Scan to Join Broadcast</h3>
+          <p class="text-xs text-zinc-400 mt-1 max-w-xs">
+            Listeners can scan this QR code with any phone camera to listen and read subtitles immediately.
+          </p>
+
+          <!-- QR Container -->
+          <div class="my-5 p-3 rounded-2xl bg-white shadow-2xl flex items-center justify-center">
+            <canvas id="qr-canvas" class="w-48 h-48 sm:w-56 sm:h-56"></canvas>
+          </div>
+
+          <!-- URL Selector (LAN vs Localhost) -->
+          <div class="w-full space-y-3">
+            <div class="flex items-center justify-between text-xs text-zinc-400">
+              <span>Network Target:</span>
+              <div class="flex gap-2">
+                <button id="qr-target-lan" class="px-2 py-0.5 rounded bg-indigo-600 text-white font-medium text-[11px]">LAN (Mobile)</button>
+                <button id="qr-target-local" class="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium text-[11px]">Localhost</button>
+              </div>
+            </div>
+
+            <!-- Direct URL Box -->
+            <div class="flex items-center gap-1.5 bg-zinc-950 border border-zinc-800 rounded-xl p-2 font-mono text-xs">
+              <input id="listener-url-input" type="text" readonly class="bg-transparent text-zinc-300 outline-none w-full truncate text-[11px]">
+              <button id="copy-url-btn" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-sans text-xs font-semibold shrink-0 cursor-pointer transition-all">
+                Copy
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Speaker Guidelines -->
+        <div class="rounded-2xl bg-zinc-900/50 border border-zinc-800/80 p-5 text-xs text-zinc-400 space-y-2.5">
+          <div class="font-bold text-zinc-200 text-sm flex items-center gap-2">
+            <span>💡</span> Speaker Tips
+          </div>
+          <p>• Speak at a natural pace. Sentences are auto-chunked upon pauses.</p>
+          <p>• Chrome, Edge, and Safari have native continuous speech engines.</p>
+          <p>• Add your <strong>Gemini API Key</strong> in Settings for top-tier Galego & Spanish literary translations.</p>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Settings Modal (Gemini API Configuration) -->
+  <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in fade-in duration-200">
+      
+      <div class="flex items-center justify-between pb-3 border-b border-zinc-800">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center">
+            ⚙️
+          </div>
+          <div>
+            <h3 class="font-bold text-base text-white">Broadcast Engine Settings</h3>
+            <p class="text-xs text-zinc-400">Configure translation precision and API credentials</p>
+          </div>
+        </div>
+        <button id="close-settings-btn" class="text-zinc-400 hover:text-white p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Mode Explanation -->
+      <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 space-y-1.5">
+        <div class="font-semibold text-white">Hybrid Translation Engine:</div>
+        <p>• <span class="text-zinc-400">Free Mode (Default):</span> Uses free server-side neural translation without needing any API key.</p>
+        <p>• <span class="text-indigo-400">Gemini 2.5 Flash Mode:</span> High-precision contextual simultaneous interpreter for idiomatic Galician and Spanish.</p>
+      </div>
+
+      <!-- API Key Field -->
+      <div class="space-y-1.5">
+        <label for="gemini-key-input" class="block text-xs font-semibold text-zinc-300 uppercase tracking-wider">
+          Gemini API Key (Optional)
+        </label>
+        <input 
+          type="password" 
+          id="gemini-key-input" 
+          placeholder="AIzaSy..." 
+          class="w-full bg-zinc-950 border border-zinc-700 focus:border-indigo-500 text-white font-mono text-xs px-3.5 py-2.5 rounded-xl outline-none"
+        >
+        <p class="text-[11px] text-zinc-500">Your key is stored ephemerally in browser memory for this session only.</p>
+      </div>
+
+      <!-- Model Select -->
+      <div class="space-y-1.5">
+        <label for="gemini-model-select" class="block text-xs font-semibold text-zinc-300 uppercase tracking-wider">
+          Model
+        </label>
+        <select id="gemini-model-select" class="w-full bg-zinc-950 border border-zinc-700 text-white text-xs px-3.5 py-2.5 rounded-xl outline-none">
+          <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recommended: Ultra-fast & High Precision)</option>
+          <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+        </select>
+      </div>
+
+      <!-- Test Key Status Box -->
+      <div id="test-key-status" class="hidden text-xs p-3 rounded-xl"></div>
+
+      <!-- Modal Footer Actions -->
+      <div class="flex items-center justify-between pt-3 border-t border-zinc-800">
+        <button id="test-gemini-btn" class="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-200 transition-all cursor-pointer">
+          Test Connection
+        </button>
+
+        <div class="flex gap-2">
+          <button id="cancel-settings-btn" class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-300">
+            Cancel
+          </button>
+          <button id="save-settings-btn" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white shadow-lg shadow-indigo-600/30">
+            Save Settings
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Client-side Host Broadcast Engine Script -->
+  <script>
+    // -------------------------------------------------------------
+    // State & Variables
+    // -------------------------------------------------------------
+    const urlParams = new URLSearchParams(window.location.search);
+    let roomCode = (urlParams.get('room') || '').toUpperCase().trim();
+
+    // Auto-generate code if none provided
+    if (!roomCode || roomCode.length < 3) {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      roomCode = '';
+      for (let i = 0; i < 6; i++) roomCode += chars.charAt(Math.floor(Math.random() * chars.length));
+      window.history.replaceState({}, '', `/host?room=${roomCode}`);
+    }
+
+    document.getElementById('room-code-badge').textContent = roomCode;
+
+    let ws = null;
+    let recognition = null;
+    let isBroadcasting = false;
+    let geminiApiKey = localStorage.getItem('echolive_gemini_key') || '';
+    let geminiModel = localStorage.getItem('echolive_gemini_model') || 'gemini-2.5-flash';
+    let networkInfo = null;
+    let qrTargetMode = 'lan'; // 'lan' or 'local'
+    let currentTab = 'gl';
+    let segmentCounter = 0;
+
+    // Elements
+    const micToggleBtn = document.getElementById('mic-toggle-btn');
+    const micIcon = document.getElementById('mic-icon');
+    const micPulseRing = document.getElementById('mic-pulse-ring');
+    const micStatusTitle = document.getElementById('mic-status-title');
+    const micStatusDesc = document.getElementById('mic-status-desc');
+    const hostStatusBadge = document.getElementById('host-status-badge');
+    const listenerCountNum = document.getElementById('listener-count-num');
+    const engineModePill = document.getElementById('engine-mode-pill');
+    const englishTranscriptBox = document.getElementById('english-transcript-box');
+    const englishInterimBox = document.getElementById('english-interim-box');
+    const interimTextContent = document.getElementById('interim-text-content');
+    const translatedFeedGl = document.getElementById('translated-feed-gl');
+    const translatedFeedEs = document.getElementById('translated-feed-es');
+    const listenerUrlInput = document.getElementById('listener-url-input');
+
+    // Initialize UI settings fields
+    if (geminiApiKey) {
+      document.getElementById('gemini-key-input').value = geminiApiKey;
+      engineModePill.textContent = 'Gemini Flash';
+      engineModePill.classList.remove('bg-zinc-800', 'text-zinc-400');
+      engineModePill.classList.add('bg-indigo-500/20', 'text-indigo-300', 'border-indigo-500/30');
+    }
+
+    // -------------------------------------------------------------
+    // Dynamic QR & Network Detection
+    // -------------------------------------------------------------
+    async function loadNetworkInfo() {
+      try {
+        const res = await fetch('/api/network-info');
+        networkInfo = await res.json();
+      } catch (e) {
+        networkInfo = {
+          localIp: window.location.hostname,
+          port: window.location.port || 3000,
+          localUrl: `${window.location.protocol}//localhost:${window.location.port || 3000}`,
+          networkUrl: `${window.location.protocol}//${window.location.hostname}:${window.location.port || 3000}`
+        };
+      }
+      updateQrAndUrl();
+    }
+
+    function updateQrAndUrl() {
+      const isPublicHost = !['localhost', '127.0.0.1'].includes(window.location.hostname) && !window.location.hostname.match(/^192\.168\.|^10\.|^172\.(1[6-9]|2[0-9]|3[0-1])\./);
+      let baseUrl = window.location.origin;
+      if (!isPublicHost) {
+        if (qrTargetMode === 'lan' && networkInfo && networkInfo.localIp !== 'localhost') {
+          baseUrl = `http://${networkInfo.localIp}:${networkInfo.port}`;
+        } else if (qrTargetMode === 'local') {
+          baseUrl = `http://localhost:${(networkInfo && networkInfo.port) || window.location.port || 3000}`;
+        }
+      } else {
+        // In cloud deployment, hide local/LAN toggle
+        const toggleContainer = document.getElementById('qr-target-lan')?.parentElement?.parentElement;
+        if (toggleContainer) toggleContainer.style.display = 'none';
+      }
+
+      const listenerUrl = `${baseUrl}/listen?room=${roomCode}`;
+
+      listenerUrlInput.value = listenerUrl;
+
+      // Render QR Canvas
+      const canvas = document.getElementById('qr-canvas');
+      QRCode.toCanvas(canvas, listenerUrl, {
+        width: 220,
+        margin: 2,
+        color: {
+          dark: '#0f172a',
+          light: '#ffffff'
+        }
+      }, (error) => {
+        if (error) console.error('QR code generation failed:', error);
+      });
+    }
+
+    document.getElementById('qr-target-lan').addEventListener('click', () => {
+      qrTargetMode = 'lan';
+      document.getElementById('qr-target-lan').className = 'px-2 py-0.5 rounded bg-indigo-600 text-white font-medium text-[11px]';
+      document.getElementById('qr-target-local').className = 'px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium text-[11px]';
+      updateQrAndUrl();
+    });
+
+    document.getElementById('qr-target-local').addEventListener('click', () => {
+      qrTargetMode = 'local';
+      document.getElementById('qr-target-local').className = 'px-2 py-0.5 rounded bg-indigo-600 text-white font-medium text-[11px]';
+      document.getElementById('qr-target-lan').className = 'px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium text-[11px]';
+      updateQrAndUrl();
+    });
+
+    document.getElementById('copy-url-btn').addEventListener('click', () => {
+      navigator.clipboard.writeText(listenerUrlInput.value);
+      const btn = document.getElementById('copy-url-btn');
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.classList.add('bg-emerald-600');
+      setTimeout(() => {
+        btn.textContent = orig;
+        btn.classList.remove('bg-emerald-600');
+      }, 2000);
+    });
+
+    document.getElementById('copy-code-btn').addEventListener('click', () => {
+      navigator.clipboard.writeText(roomCode);
+      const badge = document.getElementById('room-code-badge');
+      const orig = badge.textContent;
+      badge.textContent = 'COPIED';
+      setTimeout(() => badge.textContent = orig, 1500);
+    });
+
+    // -------------------------------------------------------------
+    // WebSocket Connection
+    // -------------------------------------------------------------
+    function connectWebSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}?room=${roomCode}&role=host`;
+
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        hostStatusBadge.className = 'inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+        hostStatusBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Host Live';
+
+        // Send settings to server
+        ws.send(JSON.stringify({
+          type: 'update_settings',
+          geminiApiKey,
+          geminiModel
+        }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.type === 'host_ready' || data.type === 'listener_update') {
+            listenerCountNum.textContent = data.count || (data.listenerCount || 0);
+
+            // Update language counters
+            const langs = data.activeLanguages || {};
+            document.getElementById('count-gl').textContent = langs['gl'] || 0;
+            document.getElementById('count-es').textContent = langs['es'] || 0;
+          }
+
+          if (data.type === 'transcript_preview') {
+            // Render translated output on host monitor
+            if (data.isFinal) {
+              appendTranslation(data.translations);
+            }
+          }
+        } catch (e) {
+          console.error('Error handling WS message:', e);
+        }
+      };
+
+      ws.onclose = () => {
+        hostStatusBadge.className = 'inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20';
+        hostStatusBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> Disconnected';
+        setTimeout(connectWebSocket, 3000);
+      };
+
+      ws.onerror = (err) => {
+        console.warn('Host WS Error:', err);
+      };
+    }
+
+    // -------------------------------------------------------------
+    // Web Speech API Capture (Host Microphone)
+    // -------------------------------------------------------------
+    function setupSpeechRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (!SpeechRecognition) {
+        alert('Your browser does not support Web Speech API. Please use Google Chrome, Microsoft Edge, or Safari.');
+        return;
+      }
+
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        isBroadcasting = true;
+        updateBroadcastUI(true);
+      };
+
+      recognition.onresult = (event) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const transcriptPiece = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcriptPiece;
+          } else {
+            interimTranscript += transcriptPiece;
+          }
+        }
+
+        // Show live interim in box
+        if (interimTranscript) {
+          interimTextContent.textContent = interimTranscript;
+
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+              type: 'interim_transcript',
+              text: interimTranscript,
+              segmentId: `seg_${segmentCounter}`
+            }));
+          }
+        }
+
+        // Final phrase captured
+        if (finalTranscript.trim()) {
+          segmentCounter++;
+          interimTextContent.textContent = '';
+          appendEnglishPhrase(finalTranscript.trim());
+
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+              type: 'final_transcript',
+              text: finalTranscript.trim(),
+              segmentId: `seg_${segmentCounter}`
+            }));
+          }
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.warn('Speech recognition error:', event.error);
+        if (event.error === 'not-allowed') {
+          alert('Microphone access was denied. Please allow microphone permissions.');
+          stopBroadcast();
+        }
+      };
+
+      recognition.onend = () => {
+        // Auto-restart if broadcasting was not manually stopped
+        if (isBroadcasting) {
+          try {
+            recognition.start();
+          } catch (e) {}
+        }
+      };
+    }
+
+    function startBroadcast() {
+      if (!recognition) setupSpeechRecognition();
+      try {
+        recognition.start();
+      } catch (e) {
+        console.warn('Recognition start exception:', e);
+      }
+    }
+
+    function stopBroadcast() {
+      isBroadcasting = false;
+      if (recognition) {
+        try { recognition.stop(); } catch (e) {}
+      }
+      updateBroadcastUI(false);
+    }
+
+    function updateBroadcastUI(active) {
+      if (active) {
+        micToggleBtn.className = 'w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-red-600 hover:bg-red-500 text-white flex items-center justify-center transition-all shadow-lg cursor-pointer';
+        micPulseRing.classList.remove('hidden');
+        micStatusTitle.textContent = 'Broadcasting LIVE';
+        micStatusDesc.textContent = 'Speech is being captured, translated, and streamed.';
+      } else {
+        micToggleBtn.className = 'w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center transition-all shadow-lg cursor-pointer';
+        micPulseRing.classList.add('hidden');
+        micStatusTitle.textContent = 'Microphone Off';
+        micStatusDesc.textContent = 'Click the microphone to start continuous live speech capture.';
+        interimTextContent.textContent = '';
+      }
+    }
+
+    micToggleBtn.addEventListener('click', () => {
+      if (isBroadcasting) {
+        stopBroadcast();
+      } else {
+        startBroadcast();
+      }
+    });
+
+    // -------------------------------------------------------------
+    // Subtitle & Transcript Rendering
+    // -------------------------------------------------------------
+    function appendEnglishPhrase(text) {
+      const placeholder = englishTranscriptBox.querySelector('.italic');
+      if (placeholder) placeholder.remove();
+
+      const item = document.createElement('div');
+      item.className = 'p-2.5 rounded-xl bg-zinc-950/70 border border-zinc-800/80 flex items-start gap-2.5 animate-in fade-in duration-150';
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      item.innerHTML = `
+        <span class="text-[10px] font-mono text-zinc-500 pt-0.5 shrink-0">${timeStr}</span>
+        <span class="text-zinc-100 font-medium text-sm">${escapeHtml(text)}</span>
+      `;
+
+      englishTranscriptBox.appendChild(item);
+      englishTranscriptBox.scrollTop = englishTranscriptBox.scrollHeight;
+    }
+
+    function appendTranslation(translations) {
+      if (!translations) return;
+
+      if (translations.gl) {
+        const placeholder = translatedFeedGl.querySelector('.italic');
+        if (placeholder) placeholder.remove();
+
+        const el = document.createElement('div');
+        el.className = 'p-2.5 rounded-xl bg-zinc-950/80 border border-indigo-500/20 text-zinc-200 text-sm animate-in fade-in duration-150';
+        el.textContent = translations.gl;
+        translatedFeedGl.appendChild(el);
+        translatedFeedGl.scrollTop = translatedFeedGl.scrollHeight;
+      }
+
+      if (translations.es) {
+        const placeholder = translatedFeedEs.querySelector('.italic');
+        if (placeholder) placeholder.remove();
+
+        const el = document.createElement('div');
+        el.className = 'p-2.5 rounded-xl bg-zinc-950/80 border border-amber-500/20 text-zinc-200 text-sm animate-in fade-in duration-150';
+        el.textContent = translations.es;
+        translatedFeedEs.appendChild(el);
+        translatedFeedEs.scrollTop = translatedFeedEs.scrollHeight;
+      }
+    }
+
+    function escapeHtml(string) {
+      const div = document.createElement('div');
+      div.innerText = string;
+      return div.innerHTML;
+    }
+
+    // Tab switcher
+    document.getElementById('tab-gl').addEventListener('click', () => {
+      currentTab = 'gl';
+      document.getElementById('tab-gl').className = 'px-2.5 py-0.5 rounded-md bg-indigo-600 text-white font-semibold transition-all';
+      document.getElementById('tab-es').className = 'px-2.5 py-0.5 rounded-md text-zinc-400 hover:text-white font-semibold transition-all';
+      translatedFeedGl.classList.remove('hidden');
+      translatedFeedEs.classList.add('hidden');
+    });
+
+    document.getElementById('tab-es').addEventListener('click', () => {
+      currentTab = 'es';
+      document.getElementById('tab-es').className = 'px-2.5 py-0.5 rounded-md bg-amber-600 text-white font-semibold transition-all';
+      document.getElementById('tab-gl').className = 'px-2.5 py-0.5 rounded-md text-zinc-400 hover:text-white font-semibold transition-all';
+      translatedFeedEs.classList.remove('hidden');
+      translatedFeedGl.classList.add('hidden');
+    });
+
+    // -------------------------------------------------------------
+    // Settings Modal
+    // -------------------------------------------------------------
+    const settingsModal = document.getElementById('settings-modal');
+    const openSettingsBtn = document.getElementById('open-settings-btn');
+    const closeSettingsBtn = document.getElementById('close-settings-btn');
+    const cancelSettingsBtn = document.getElementById('cancel-settings-btn');
+    const saveSettingsBtn = document.getElementById('save-settings-btn');
+    const testGeminiBtn = document.getElementById('test-gemini-btn');
+    const testKeyStatus = document.getElementById('test-key-status');
+
+    openSettingsBtn.addEventListener('click', () => {
+      document.getElementById('gemini-key-input').value = geminiApiKey;
+      document.getElementById('gemini-model-select').value = geminiModel;
+      testKeyStatus.classList.add('hidden');
+      settingsModal.classList.remove('hidden');
+    });
+
+    function closeSettings() {
+      settingsModal.classList.add('hidden');
+    }
+
+    closeSettingsBtn.addEventListener('click', closeSettings);
+    cancelSettingsBtn.addEventListener('click', closeSettings);
+
+    saveSettingsBtn.addEventListener('click', () => {
+      geminiApiKey = document.getElementById('gemini-key-input').value.trim();
+      geminiModel = document.getElementById('gemini-model-select').value;
+      localStorage.setItem('echolive_gemini_key', geminiApiKey);
+      localStorage.setItem('echolive_gemini_model', geminiModel);
+
+      if (geminiApiKey) {
+        engineModePill.textContent = 'Gemini Flash';
+        engineModePill.className = 'text-[11px] px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-medium';
+      } else {
+        engineModePill.textContent = 'Free Engine';
+        engineModePill.className = 'text-[11px] px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-400 border border-zinc-700 font-medium';
+      }
+
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'update_settings',
+          geminiApiKey,
+          geminiModel
+        }));
+      }
+
+      closeSettings();
+    });
+
+    testGeminiBtn.addEventListener('click', async () => {
+      const key = document.getElementById('gemini-key-input').value.trim();
+      const model = document.getElementById('gemini-model-select').value;
+
+      if (!key) {
+        testKeyStatus.className = 'text-xs p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400';
+        testKeyStatus.textContent = 'Please enter an API key to test.';
+        testKeyStatus.classList.remove('hidden');
+        return;
+      }
+
+      testKeyStatus.className = 'text-xs p-3 rounded-xl bg-zinc-800 text-zinc-300';
+      testKeyStatus.textContent = 'Testing connection with Gemini API...';
+      testKeyStatus.classList.remove('hidden');
+
+      try {
+        const res = await fetch('/api/test-gemini', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ apiKey: key, model })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          testKeyStatus.className = 'text-xs p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400';
+          testKeyStatus.innerHTML = `<strong>Success!</strong> Gemini translated: <em>"${data.result.gl}"</em>`;
+        } else {
+          testKeyStatus.className = 'text-xs p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400';
+          testKeyStatus.textContent = `Error: ${data.error || 'Connection failed'}`;
+        }
+      } catch (err) {
+        testKeyStatus.className = 'text-xs p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400';
+        testKeyStatus.textContent = `Error: ${err.message}`;
+      }
+    });
+
+    // End session button
+    document.getElementById('end-session-btn').addEventListener('click', () => {
+      if (confirm('Are you sure you want to end this broadcast? This will disconnect all listeners and destroy the ephemeral room.')) {
+        stopBroadcast();
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'host_end_session' }));
+        }
+        window.location.href = '/';
+      }
+    });
+
+    // Boot
+    loadNetworkInfo();
+    connectWebSocket();
+    setupSpeechRecognition();
+  </script>
+</body>
+</html>

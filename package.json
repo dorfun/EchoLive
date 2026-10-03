@@ -1,0 +1,26 @@
+{
+  "name": "echolive",
+  "version": "1.0.0",
+  "description": "EchoLive - Real-Time Live Speech Translation and Audio Broadcast Web Application",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "speech-to-text",
+    "realtime-translation",
+    "galician",
+    "spanish",
+    "gemini",
+    "websockets",
+    "audio-broadcast"
+  ],
+  "author": "EchoLive Team",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "ws": "^8.17.0"
+  }
+}
