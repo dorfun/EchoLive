@@ -26,7 +26,22 @@ async function runTests() {
   }
   console.log('✅ /api/languages verified');
 
-  // 2. Test HTTP GET /api/network-info
+  // 2. Test HTTP GET /api/config
+  console.log('Testing GET /api/config...');
+  const appConfig = await new Promise((resolve, reject) => {
+    http.get('http://localhost:3000/api/config', (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => resolve(JSON.parse(data)));
+    }).on('error', reject);
+  });
+  console.log('App config:', appConfig);
+  if (!appConfig.supportedModels || !appConfig.defaultModel) {
+    throw new Error('Config missing models');
+  }
+  console.log('✅ /api/config verified');
+
+  // 3. Test HTTP GET /api/network-info
   console.log('Testing GET /api/network-info...');
   const netInfo = await new Promise((resolve, reject) => {
     http.get('http://localhost:3000/api/network-info', (res) => {
@@ -38,7 +53,7 @@ async function runTests() {
   console.log('Network info:', netInfo);
   console.log('✅ /api/network-info verified');
 
-  // 3. Test HTTP GET /api/tts
+  // 4. Test HTTP GET /api/tts
   console.log('Testing GET /api/tts (Galician synthesis)...');
   const ttsHeaders = await new Promise((resolve, reject) => {
     http.get('http://localhost:3000/api/tts?lang=gl&text=Ola%20amigos', (res) => {
@@ -53,7 +68,7 @@ async function runTests() {
   }
   console.log('✅ Server-side TTS synthesis verified');
 
-  // 4. Test WebSocket Host & Listener Lifecycle
+  // 5. Test WebSocket Host & Listener Lifecycle & Translation
   console.log('Testing WebSocket room lifecycle with room TEST01...');
   const roomCode = 'TEST01';
 
@@ -74,15 +89,14 @@ async function runTests() {
   });
   console.log('Listener WebSocket connected');
 
-  // Wait for listener count update on host
-  let receivedSubtitle = false;
+  let receivedSubtitle = null;
   let receivedAudio = false;
 
   listenerWs.on('message', (msg) => {
     const data = JSON.parse(msg.toString());
     console.log('[Listener received WS message]:', data.type, data.text ? `"${data.text}"` : '');
     if (data.type === 'subtitle' && data.isFinal) {
-      receivedSubtitle = true;
+      receivedSubtitle = data.text;
     }
     if (data.type === 'audio_chunk' && data.audioBase64) {
       receivedAudio = true;
@@ -90,11 +104,13 @@ async function runTests() {
     }
   });
 
-  // Host sends final transcript
-  console.log('Host sending final transcript: "Good morning and welcome to EchoLive."');
+  // Host sends final transcript in English
+  const englishPhrase = 'Good morning and welcome to EchoLive.';
+  console.log(`Host sending English transcript: "${englishPhrase}"`);
   hostWs.send(JSON.stringify({
     type: 'final_transcript',
-    text: 'Good morning and welcome to EchoLive.',
+    text: englishPhrase,
+    sourceLang: 'en',
     segmentId: 'seg_test_1'
   }));
 
@@ -108,6 +124,11 @@ async function runTests() {
   if (!receivedSubtitle) throw new Error('Listener did not receive translated subtitle');
   if (!receivedAudio) throw new Error('Listener did not receive live audio chunk');
 
+  // CRITICAL VERIFICATION: The subtitle MUST NOT be the untranslated English phrase!
+  if (receivedSubtitle.trim().toLowerCase() === englishPhrase.trim().toLowerCase()) {
+    throw new Error(`Translation failure: Listener received untranslated phrase "${receivedSubtitle}"`);
+  }
+  console.log(`✅ Translation verified: "${englishPhrase}" -> "${receivedSubtitle}" (Galician)`);
   console.log('✅ Real-time Translation & Audio Chunk streaming verified successfully!');
 
   // Test host ending session

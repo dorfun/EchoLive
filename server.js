@@ -2,16 +2,43 @@ const express = require('express');
 const http = require('http');
 const { WebSocketServer, WebSocket } = require('ws');
 const path = require('path');
+const fs = require('fs');
 const os = require('os');
 const https = require('https');
 const url = require('url');
 const cors = require('cors');
+
+// Load environment variables from .env file if present (zero external dependencies)
+const envFilePath = path.join(__dirname, '.env');
+if (fs.existsSync(envFilePath)) {
+  try {
+    const envFileContent = fs.readFileSync(envFilePath, 'utf-8');
+    for (const rawLine of envFileContent.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (line && !line.startsWith('#') && line.includes('=')) {
+        const eqIdx = line.indexOf('=');
+        const key = line.slice(0, eqIdx).trim();
+        let val = line.slice(eqIdx + 1).trim();
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1);
+        }
+        if (!process.env[key]) {
+          process.env[key] = val;
+        }
+      }
+    }
+    console.log('[EchoLive] Loaded environment configuration from .env file');
+  } catch (err) {
+    console.warn('[EchoLive] Warning: Could not read .env file:', err.message);
+  }
+}
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
 const PORT = process.env.PORT || 3000;
+const DEFAULT_GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
 
 // Enable CORS and JSON parsing
 app.use(cors());
@@ -22,6 +49,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const SUPPORTED_LANGUAGES = [
   { code: 'gl', name: 'Galego', flag: '🔵' },
   { code: 'es', name: 'Castelán', flag: '🇪🇸' },
+  { code: 'en', name: 'English', flag: '🇬🇧' },
   { code: 'pt', name: 'Português', flag: '🇵🇹' },
   { code: 'fr', name: 'Français', flag: '🇫🇷' },
   { code: 'de', name: 'Deutsch', flag: '🇩🇪' }
@@ -75,8 +103,8 @@ function getOrCreateRoom(code) {
       code: normalized,
       hostWs: null,
       listeners: new Map(),
-      geminiApiKey: null,
-      geminiModel: 'gemini-2.5-flash',
+      geminiApiKey: process.env.GEMINI_API_KEY || null,
+      geminiModel: DEFAULT_GEMINI_MODEL,
       cleanupTimer: null,
       createdAt: Date.now()
     });
@@ -197,15 +225,23 @@ function httpsRequest(options, postData = null) {
   });
 }
 
-// 1. Free/Native translation fallback (Google GTX endpoint)
-async function translateFree(text, targetLang) {
-  const cacheKey = `${targetLang}:${text}`;
+// ---------------------------------------------------------
+// TRANSLATION ENGINE (Multi-Tier Resilient Architecture)
+// ---------------------------------------------------------
+// Tier 1: High-Precision Gemini Flash (Server or Host API key)
+// Tier 2: Free Cloud-Safe Neural Fallback (MyMemory API - works reliably on Render / Cloud)
+// Tier 3: Google GTX Translation Fallback (sl=auto for local LANs)
+
+// 1. Cloud-Safe Neural Translation (MyMemory API)
+async function translateMyMemory(text, sourceLang = 'en', targetLang = 'gl') {
+  const cacheKey = `mymemory:${sourceLang}:${targetLang}:${text}`;
   if (translationCache.has(cacheKey)) {
     return translationCache.get(cacheKey);
   }
 
   try {
-    const targetUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${encodeURIComponent(targetLang)}&dt=t&q=${encodeURIComponent(text)}`;
+    const pair = `${sourceLang}|${targetLang}`;
+    const targetUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${encodeURIComponent(pair)}`;
     const parsed = new URL(targetUrl);
 
     const response = await httpsRequest({
@@ -213,7 +249,48 @@ async function translateFree(text, targetLang) {
       path: parsed.pathname + parsed.search,
       method: 'GET',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (compatible; EchoLive/1.0; speech-translation)'
+      }
+    });
+
+    if (response.statusCode === 200) {
+      const json = JSON.parse(response.body.toString('utf-8'));
+      if (json && json.responseData && json.responseData.translatedText) {
+        const translated = json.responseData.translatedText.trim();
+        // Discard MyMemory rate warnings or failure echoes
+        if (translated && !translated.startsWith('MYMEMORY WARNING') && !translated.startsWith('QUERY LENGTH LIMIT')) {
+          if (translated.toLowerCase() !== text.toLowerCase() || sourceLang === targetLang) {
+            translationCache.set(cacheKey, translated);
+            return translated;
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn(`[MyMemory] Translation warning for ${sourceLang}->${targetLang}:`, err.message);
+  }
+
+  return null;
+}
+
+// 2. Google GTX Free Fallback with Dynamic Source Language
+async function translateGoogleGtx(text, sourceLang = 'auto', targetLang = 'gl') {
+  const sl = sourceLang || 'auto';
+  const cacheKey = `gtx:${sl}:${targetLang}:${text}`;
+  if (translationCache.has(cacheKey)) {
+    return translationCache.get(cacheKey);
+  }
+
+  try {
+    const targetUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sl)}&tl=${encodeURIComponent(targetLang)}&dt=t&q=${encodeURIComponent(text)}`;
+    const parsed = new URL(targetUrl);
+
+    const response = await httpsRequest({
+      hostname: parsed.hostname,
+      path: parsed.pathname + parsed.search,
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
       }
     });
 
@@ -221,27 +298,36 @@ async function translateFree(text, targetLang) {
       const json = JSON.parse(response.body.toString('utf-8'));
       if (Array.isArray(json) && Array.isArray(json[0])) {
         const translated = json[0].map(item => item[0]).filter(Boolean).join('');
-        if (translated) {
-          translationCache.set(cacheKey, translated);
-          return translated;
+        if (translated && translated.trim()) {
+          translationCache.set(cacheKey, translated.trim());
+          return translated.trim();
         }
       }
     }
   } catch (err) {
-    console.warn(`[Translate] Free translation error for ${targetLang}:`, err.message);
+    console.warn(`[GTX] Translation warning for ${targetLang}:`, err.message);
   }
 
-  return text; // Graceful fallback
+  return null;
 }
 
-// 2. High-Precision Gemini Flash Translation
-async function translateWithGemini(text, targetLangs, apiKey, model = 'gemini-2.5-flash') {
+// 3. High-Precision Gemini Flash Translation
+async function translateWithGemini(text, targetLangs, apiKey, model = DEFAULT_GEMINI_MODEL, sourceLang = 'en') {
+  // Normalize model name (convert legacy/invalid 'gemini-2.5-flash' to 'gemini-2.0-flash')
+  let actualModel = model || DEFAULT_GEMINI_MODEL;
+  if (actualModel === 'gemini-2.5-flash') {
+    actualModel = 'gemini-2.0-flash';
+  }
+
   const langListStr = targetLangs.map(code => {
     const found = SUPPORTED_LANGUAGES.find(l => l.code === code);
     return `${code} (${found ? found.name : code})`;
   }).join(', ');
 
-  const systemPrompt = `You are a real-time simultaneous interpreter. Translate the spoken English text into the requested target languages: ${langListStr}.
+  const srcLangObj = SUPPORTED_LANGUAGES.find(l => l.code === sourceLang);
+  const srcName = srcLangObj ? `${srcLangObj.name} (${srcLangObj.code})` : sourceLang;
+
+  const systemPrompt = `You are a real-time simultaneous conference interpreter. Translate the spoken input text from ${srcName} into the requested target languages: ${langListStr}.
 Maintain natural speech rhythm, colloquial fluency, and precise nuance.
 Crucial: Return ONLY a raw JSON object mapping language code to translated string. No markdown formatting, no backticks, no comments.
 Example format:
@@ -255,7 +341,7 @@ Example format:
       {
         parts: [
           { text: systemPrompt },
-          { text: `Translate this spoken English: "${text}"` }
+          { text: `Spoken input to translate: "${text}"` }
         ]
       }
     ],
@@ -265,7 +351,7 @@ Example format:
     }
   });
 
-  const apiPath = `/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const apiPath = `/v1beta/models/${encodeURIComponent(actualModel)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
   try {
     const response = await httpsRequest({
@@ -299,43 +385,70 @@ Example format:
     console.warn(`[Gemini] Translation failed:`, err.message);
   }
 
-  // Fallback to free translator if Gemini fails or rate limits
-  const fallbackResults = {};
-  for (const lang of targetLangs) {
-    fallbackResults[lang] = await translateFree(text, lang);
-  }
-  return fallbackResults;
+  return null;
 }
 
-// Unified translation dispatcher
-async function performTranslation(text, targetLangs, geminiApiKey, geminiModel) {
+// Unified multi-tier translation dispatcher
+async function performTranslation(text, targetLangs, geminiApiKey, geminiModel, sourceLang = 'en') {
   if (!text || !text.trim() || targetLangs.length === 0) {
     return {};
   }
 
   const results = {};
   const neededLangs = [...new Set(targetLangs)];
+  const remainingLangs = [];
 
-  if (geminiApiKey && geminiApiKey.trim()) {
+  // If target language is same as source language, use original text directly
+  for (const lang of neededLangs) {
+    if (lang === sourceLang) {
+      results[lang] = text;
+    } else {
+      remainingLangs.push(lang);
+    }
+  }
+
+  if (remainingLangs.length === 0) {
+    return results;
+  }
+
+  // 1. Try Gemini if API key is provided (either from room or server environment)
+  const effectiveKey = (geminiApiKey && geminiApiKey.trim()) || process.env.GEMINI_API_KEY;
+  if (effectiveKey && effectiveKey.trim()) {
     try {
-      const geminiRes = await translateWithGemini(text, neededLangs, geminiApiKey, geminiModel);
-      for (const lang of neededLangs) {
-        if (geminiRes && geminiRes[lang]) {
-          results[lang] = geminiRes[lang];
-        } else {
-          results[lang] = await translateFree(text, lang);
+      const geminiRes = await translateWithGemini(text, remainingLangs, effectiveKey.trim(), geminiModel, sourceLang);
+      if (geminiRes && typeof geminiRes === 'object') {
+        for (const lang of remainingLangs) {
+          if (geminiRes[lang] && typeof geminiRes[lang] === 'string' && geminiRes[lang].trim()) {
+            results[lang] = geminiRes[lang].trim();
+          }
         }
       }
-      return results;
     } catch (e) {
       console.warn('[Translate] Gemini execution error, using fallback:', e.message);
     }
   }
 
-  // Free mode
-  for (const lang of neededLangs) {
-    results[lang] = await translateFree(text, lang);
+  // 2. Free fallbacks for any languages not yet resolved
+  for (const lang of remainingLangs) {
+    if (results[lang]) continue;
+
+    // Try MyMemory (cloud-friendly, works on Render / Datacenters)
+    let tr = await translateMyMemory(text, sourceLang, lang);
+
+    // If MyMemory failed or returned empty, try Google GTX
+    if (!tr) {
+      tr = await translateGoogleGtx(text, sourceLang, lang);
+    }
+
+    if (tr) {
+      results[lang] = tr;
+    } else {
+      // Graceful fallback to avoid crash
+      console.warn(`[Translate] Notice: Could not translate chunk to ${lang}, using original text`);
+      results[lang] = text;
+    }
   }
+
   return results;
 }
 
@@ -418,19 +531,39 @@ app.get('/api/rooms/:code', (req, res) => {
   });
 });
 
+// Server config and engine status
+app.get('/api/config', (req, res) => {
+  res.json({
+    hasServerApiKey: !!process.env.GEMINI_API_KEY,
+    defaultModel: DEFAULT_GEMINI_MODEL,
+    supportedModels: [
+      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Recommended: Ultra-fast & High Precision)' },
+      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
+      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' }
+    ]
+  });
+});
+
 // Test Gemini API key endpoint
 app.post('/api/test-gemini', async (req, res) => {
-  const { apiKey, model } = req.body;
-  if (!apiKey) {
-    return res.status(400).json({ success: false, error: 'API key is required' });
+  const { apiKey, model, sourceLang } = req.body;
+  const effectiveKey = (apiKey && apiKey.trim()) || process.env.GEMINI_API_KEY;
+  if (!effectiveKey) {
+    return res.status(400).json({ success: false, error: 'API key is required to test' });
   }
 
   try {
-    const testResult = await translateWithGemini('Hello everyone, welcome to EchoLive broadcast.', ['gl', 'es'], apiKey, model);
+    const testResult = await translateWithGemini(
+      'Hello everyone, welcome to EchoLive broadcast.',
+      ['gl', 'es'],
+      effectiveKey,
+      model || DEFAULT_GEMINI_MODEL,
+      sourceLang || 'en'
+    );
     if (testResult && (testResult.gl || testResult.es)) {
       return res.json({ success: true, result: testResult });
     }
-    res.status(400).json({ success: false, error: 'Failed to parse Gemini response' });
+    res.status(400).json({ success: false, error: 'Gemini responded but did not return valid translation JSON' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -491,13 +624,15 @@ wss.on('connection', (ws, req) => {
     room.hostWs = ws;
     console.log(`[EchoLive] Host connected to room ${roomCode}`);
 
-    // Send confirmation to host
+    // Send confirmation to host with engine details
     ws.send(JSON.stringify({
       type: 'host_ready',
       room: roomCode,
       listenerCount: room.listeners.size,
       activeLanguages: getActiveRoomLanguages(room),
-      supportedLanguages: SUPPORTED_LANGUAGES
+      supportedLanguages: SUPPORTED_LANGUAGES,
+      hasServerApiKey: !!process.env.GEMINI_API_KEY,
+      geminiModel: room.geminiModel || DEFAULT_GEMINI_MODEL
     }));
 
     // Notify listeners that host is live
@@ -520,8 +655,15 @@ wss.on('connection', (ws, req) => {
         // Update settings (Gemini API Key or model)
         if (data.type === 'update_settings') {
           if (data.geminiApiKey !== undefined) room.geminiApiKey = data.geminiApiKey;
-          if (data.geminiModel !== undefined) room.geminiModel = data.geminiModel;
-          ws.send(JSON.stringify({ type: 'settings_updated', status: 'ok' }));
+          if (data.geminiModel !== undefined) {
+            room.geminiModel = data.geminiModel === 'gemini-2.5-flash' ? 'gemini-2.0-flash' : data.geminiModel;
+          }
+          ws.send(JSON.stringify({ 
+            type: 'settings_updated', 
+            status: 'ok',
+            geminiModel: room.geminiModel,
+            hasEffectiveKey: !!(room.geminiApiKey || process.env.GEMINI_API_KEY)
+          }));
           return;
         }
 
@@ -536,19 +678,22 @@ wss.on('connection', (ws, req) => {
           const text = (data.text || '').trim();
           if (!text) return;
 
+          const sourceLang = data.sourceLang || 'en';
+
           // Collect languages currently listened to by participants
           const activeLangs = Object.keys(getActiveRoomLanguages(room));
           // Always translate at least to gl and es for host monitor
           const targetLangs = [...new Set(['gl', 'es', ...activeLangs])];
 
           // Quick translation for interim subtitles
-          const translations = await performTranslation(text, targetLangs, room.geminiApiKey, room.geminiModel);
+          const translations = await performTranslation(text, targetLangs, room.geminiApiKey, room.geminiModel, sourceLang);
 
           // Echo preview back to host
           ws.send(JSON.stringify({
             type: 'transcript_preview',
             isFinal: false,
             original: text,
+            sourceLang,
             translations,
             segmentId: data.segmentId
           }));
@@ -574,17 +719,20 @@ wss.on('connection', (ws, req) => {
           const text = (data.text || '').trim();
           if (!text) return;
 
+          const sourceLang = data.sourceLang || 'en';
+
           const activeLangs = Object.keys(getActiveRoomLanguages(room));
           const targetLangs = [...new Set(['gl', 'es', ...activeLangs])];
 
           // High-accuracy translation
-          const translations = await performTranslation(text, targetLangs, room.geminiApiKey, room.geminiModel);
+          const translations = await performTranslation(text, targetLangs, room.geminiApiKey, room.geminiModel, sourceLang);
 
           // Send confirmation back to host
           ws.send(JSON.stringify({
             type: 'transcript_preview',
             isFinal: true,
             original: text,
+            sourceLang,
             translations,
             segmentId: data.segmentId
           }));

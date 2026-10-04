@@ -83,6 +83,12 @@
           <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
           Connecting...
         </span>
+
+        <!-- Engine Status Badge -->
+        <button id="engine-status-badge" class="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-zinc-900 text-zinc-300 border border-zinc-700/80 hover:border-indigo-500 transition-colors cursor-pointer" title="Click to configure Translation Engine">
+          <span id="engine-status-dot" class="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>
+          <span id="engine-status-text">Detecting Engine...</span>
+        </button>
       </div>
 
       <!-- Right controls: Listeners, Settings & End Session -->
@@ -96,7 +102,7 @@
         </div>
 
         <!-- Settings Button -->
-        <button id="open-settings-btn" class="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white transition-all cursor-pointer" title="Translation Settings">
+        <button id="open-settings-btn" class="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white transition-all cursor-pointer" title="Translation Settings & API Key">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -113,6 +119,32 @@
 
   <!-- Main Content Layout -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 flex flex-col gap-6">
+
+    <!-- External API Key Advisory / Recommendation Banner -->
+    <div id="api-advisory-banner" class="hidden rounded-2xl bg-gradient-to-r from-indigo-950/80 via-zinc-900 to-indigo-950/80 border border-indigo-500/30 p-4 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center shrink-0 text-base">
+          🔑
+        </div>
+        <div class="text-xs">
+          <div class="font-bold text-indigo-300 flex items-center gap-2">
+            <span>Gemini API Key Recommended for Cloud & Conference Accuracy</span>
+            <span class="px-2 py-0.2 rounded text-[10px] bg-indigo-500/30 text-indigo-200">Free Tier</span>
+          </div>
+          <div class="text-zinc-300 mt-1">
+            Cloud environments (Render, AWS, etc.) can throttle unauthenticated translation endpoints. For guaranteed, simultaneous literary-grade translations to Galician and Spanish, configure your free Gemini API key.
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <button id="banner-open-settings-btn" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/30 transition-all cursor-pointer">
+          Configure API Key
+        </button>
+        <button id="dismiss-advisory-btn" class="p-2 text-zinc-400 hover:text-white rounded-lg text-xs" title="Dismiss">
+          ✕
+        </button>
+      </div>
+    </div>
 
     <!-- Broadcast Control Banner -->
     <div class="rounded-2xl bg-zinc-900/90 border border-zinc-800 p-4 sm:p-6 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
@@ -134,6 +166,19 @@
             <span id="engine-mode-pill" class="text-[11px] px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-400 border border-zinc-700 font-medium">Free Engine</span>
           </div>
           <p id="mic-status-desc" class="text-xs sm:text-sm text-zinc-400 mt-0.5">Click the microphone to start continuous live speech capture.</p>
+
+          <!-- Speaker Voice Selector -->
+          <div class="mt-2.5 flex items-center gap-2">
+            <label for="source-lang-select" class="text-[11px] font-semibold text-zinc-400">Speaker Language:</label>
+            <select id="source-lang-select" class="bg-zinc-950 border border-zinc-700 hover:border-indigo-500 text-white text-xs font-semibold py-1 px-2.5 rounded-lg outline-none cursor-pointer transition-colors">
+              <option value="en-US" data-code="en">🇬🇧 English (en-US)</option>
+              <option value="es-ES" data-code="es">🇪🇸 Castelán (es-ES)</option>
+              <option value="gl-ES" data-code="gl">🔵 Galego (gl-ES)</option>
+              <option value="pt-PT" data-code="pt">🇵🇹 Português (pt-PT)</option>
+              <option value="fr-FR" data-code="fr">🇫🇷 Français (fr-FR)</option>
+              <option value="de-DE" data-code="de">🇩🇪 Deutsch (de-DE)</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -163,14 +208,14 @@
       <!-- Left Column (2 Cols): Live Transcript & Translated Feeds -->
       <div class="lg:col-span-2 flex flex-col gap-6">
         
-        <!-- Live English Input Monitor -->
+        <!-- Live Speech Input Monitor -->
         <div class="rounded-2xl bg-zinc-900/90 border border-zinc-800 p-5 shadow-xl flex flex-col h-80 sm:h-96">
           <div class="flex items-center justify-between pb-3 border-b border-zinc-800">
             <div class="flex items-center gap-2">
               <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <h3 class="font-bold text-sm text-white">Live English Speech Input (Speaker)</h3>
+              <h3 id="speech-box-title" class="font-bold text-sm text-white">Live English Speech Input (Speaker)</h3>
             </div>
-            <span class="text-xs text-zinc-500 font-mono">en-US Continuous</span>
+            <span id="source-lang-badge" class="text-xs text-zinc-500 font-mono">en-US Continuous</span>
           </div>
 
           <!-- Transcript Scroll Area -->
@@ -282,36 +327,66 @@
         </button>
       </div>
 
-      <!-- Mode Explanation -->
-      <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 space-y-1.5">
-        <div class="font-semibold text-white">Hybrid Translation Engine:</div>
-        <p>• <span class="text-zinc-400">Free Mode (Default):</span> Uses free server-side neural translation without needing any API key.</p>
-        <p>• <span class="text-indigo-400">Gemini 2.5 Flash Mode:</span> High-precision contextual simultaneous interpreter for idiomatic Galician and Spanish.</p>
+      <!-- Server Key Status Indicator -->
+      <div id="server-key-indicator" class="hidden p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs space-y-1">
+        <div class="font-bold flex items-center gap-1.5 text-emerald-400">
+          <span>✅</span> Server API Key Active
+        </div>
+        <p class="text-[11px] text-emerald-300/80">The backend server is configured with <code>process.env.GEMINI_API_KEY</code>. All broadcasts automatically benefit from high-precision Gemini interpretation. You may override it below if desired.</p>
+      </div>
+
+      <!-- Mode Explanation & Free Key Link -->
+      <div class="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 space-y-2">
+        <div class="font-semibold text-white flex items-center justify-between">
+          <span>Translation Engine Hierarchy:</span>
+          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:text-indigo-300 font-bold underline inline-flex items-center gap-1">
+            Get Free Gemini API Key ↗
+          </a>
+        </div>
+        <p>• <span class="text-indigo-300 font-medium">Gemini 2.0 Flash:</span> Real-time conversational simultaneous interpreter with cultural & dialectal precision (e.g. Galician, Spanish). Highly recommended for cloud/production use.</p>
+        <p>• <span class="text-zinc-400 font-medium">Cloud Neural & GTX Fallback:</span> Automatic zero-config fallback (MyMemory + Google) used when no API key is provided.</p>
       </div>
 
       <!-- API Key Field -->
       <div class="space-y-1.5">
-        <label for="gemini-key-input" class="block text-xs font-semibold text-zinc-300 uppercase tracking-wider">
-          Gemini API Key (Optional)
-        </label>
-        <input 
-          type="password" 
-          id="gemini-key-input" 
-          placeholder="AIzaSy..." 
-          class="w-full bg-zinc-950 border border-zinc-700 focus:border-indigo-500 text-white font-mono text-xs px-3.5 py-2.5 rounded-xl outline-none"
-        >
-        <p class="text-[11px] text-zinc-500">Your key is stored ephemerally in browser memory for this session only.</p>
+        <div class="flex items-center justify-between">
+          <label for="gemini-key-input" class="block text-xs font-semibold text-zinc-300 uppercase tracking-wider">
+            Gemini API Key
+          </label>
+          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" class="text-[11px] text-indigo-400 hover:underline">
+            Create key in 1 click (Free)
+          </a>
+        </div>
+        <div class="relative">
+          <input 
+            type="password" 
+            id="gemini-key-input" 
+            placeholder="AIzaSy..." 
+            class="w-full bg-zinc-950 border border-zinc-700 focus:border-indigo-500 text-white font-mono text-xs px-3.5 py-2.5 pr-10 rounded-xl outline-none"
+          >
+          <button type="button" id="toggle-key-visibility-btn" class="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-400 hover:text-white cursor-pointer text-xs" title="Toggle visibility">
+            👁️
+          </button>
+        </div>
+        <p class="text-[11px] text-zinc-500">Stored in your browser's local memory, or configure <code>GEMINI_API_KEY</code> on your server.</p>
       </div>
 
       <!-- Model Select -->
       <div class="space-y-1.5">
         <label for="gemini-model-select" class="block text-xs font-semibold text-zinc-300 uppercase tracking-wider">
-          Model
+          AI Translation Model
         </label>
-        <select id="gemini-model-select" class="w-full bg-zinc-950 border border-zinc-700 text-white text-xs px-3.5 py-2.5 rounded-xl outline-none">
-          <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recommended: Ultra-fast & High Precision)</option>
+        <select id="gemini-model-select" class="w-full bg-zinc-950 border border-zinc-700 text-white text-xs px-3.5 py-2.5 rounded-xl outline-none cursor-pointer">
+          <option value="gemini-2.0-flash">Gemini 2.0 Flash (Recommended: Ultra-fast & High Precision)</option>
           <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+          <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
         </select>
+      </div>
+
+      <!-- Server Environment Deployment Instructions Card -->
+      <div class="p-3 rounded-xl bg-zinc-950/70 border border-zinc-800 text-[11px] text-zinc-400 space-y-1">
+        <span class="font-semibold text-zinc-300">💡 Hosting on Render, Docker, or Cloud?</span>
+        <p>Set <code>GEMINI_API_KEY=your_key</code> in your cloud dashboard Environment Variables or <code>.env</code> file. No manual key entry needed by individual speakers!</p>
       </div>
 
       <!-- Test Key Status Box -->
@@ -357,8 +432,12 @@
     let ws = null;
     let recognition = null;
     let isBroadcasting = false;
+    let hasServerApiKey = false;
     let geminiApiKey = localStorage.getItem('echolive_gemini_key') || '';
-    let geminiModel = localStorage.getItem('echolive_gemini_model') || 'gemini-2.5-flash';
+    let geminiModel = localStorage.getItem('echolive_gemini_model') || 'gemini-2.0-flash';
+    if (geminiModel === 'gemini-2.5-flash') geminiModel = 'gemini-2.0-flash';
+
+    let currentSourceLang = localStorage.getItem('echolive_source_lang') || 'en-US';
     let networkInfo = null;
     let qrTargetMode = 'lan'; // 'lan' or 'local'
     let currentTab = 'gl';
@@ -371,22 +450,116 @@
     const micStatusTitle = document.getElementById('mic-status-title');
     const micStatusDesc = document.getElementById('mic-status-desc');
     const hostStatusBadge = document.getElementById('host-status-badge');
+    const engineStatusBadge = document.getElementById('engine-status-badge');
+    const engineStatusDot = document.getElementById('engine-status-dot');
+    const engineStatusText = document.getElementById('engine-status-text');
+    const apiAdvisoryBanner = document.getElementById('api-advisory-banner');
     const listenerCountNum = document.getElementById('listener-count-num');
     const engineModePill = document.getElementById('engine-mode-pill');
+    const sourceLangSelect = document.getElementById('source-lang-select');
+    const speechBoxTitle = document.getElementById('speech-box-title');
+    const sourceLangBadge = document.getElementById('source-lang-badge');
     const englishTranscriptBox = document.getElementById('english-transcript-box');
     const englishInterimBox = document.getElementById('english-interim-box');
     const interimTextContent = document.getElementById('interim-text-content');
     const translatedFeedGl = document.getElementById('translated-feed-gl');
     const translatedFeedEs = document.getElementById('translated-feed-es');
     const listenerUrlInput = document.getElementById('listener-url-input');
+    const serverKeyIndicator = document.getElementById('server-key-indicator');
 
-    // Initialize UI settings fields
-    if (geminiApiKey) {
-      document.getElementById('gemini-key-input').value = geminiApiKey;
-      engineModePill.textContent = 'Gemini Flash';
-      engineModePill.classList.remove('bg-zinc-800', 'text-zinc-400');
-      engineModePill.classList.add('bg-indigo-500/20', 'text-indigo-300', 'border-indigo-500/30');
+    // Helper: get 2-letter language code from source select (e.g. 'en-US' -> 'en')
+    function getSourceLangCode() {
+      const selectedOption = sourceLangSelect.options[sourceLangSelect.selectedIndex];
+      return selectedOption?.dataset?.code || (sourceLangSelect.value || 'en').split('-')[0].toLowerCase();
     }
+
+    // Helper: get human readable name for source language
+    function getSourceLangName() {
+      const selectedOption = sourceLangSelect.options[sourceLangSelect.selectedIndex];
+      return selectedOption?.text || 'English';
+    }
+
+    // Sync source language UI state
+    sourceLangSelect.value = currentSourceLang;
+    function updateSourceLangUI() {
+      const langCode = getSourceLangCode();
+      const langName = getSourceLangName().split('(')[0].trim();
+      speechBoxTitle.textContent = `Live Speech Input (${langName})`;
+      sourceLangBadge.textContent = `${sourceLangSelect.value} Continuous`;
+    }
+    updateSourceLangUI();
+
+    sourceLangSelect.addEventListener('change', () => {
+      currentSourceLang = sourceLangSelect.value;
+      localStorage.setItem('echolive_source_lang', currentSourceLang);
+      updateSourceLangUI();
+
+      if (recognition) {
+        recognition.lang = currentSourceLang;
+        if (isBroadcasting) {
+          try {
+            recognition.stop();
+          } catch (e) {}
+        }
+      }
+    });
+
+    // Update Engine Mode Badge & Callouts
+    function updateEngineBadges() {
+      if (hasServerApiKey) {
+        engineStatusDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse';
+        engineStatusText.textContent = 'Gemini AI (Server)';
+        engineModePill.textContent = 'Gemini Flash (Server)';
+        engineModePill.className = 'text-[11px] px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium';
+        apiAdvisoryBanner.classList.add('hidden');
+        if (serverKeyIndicator) serverKeyIndicator.classList.remove('hidden');
+      } else if (geminiApiKey) {
+        engineStatusDot.className = 'w-1.5 h-1.5 rounded-full bg-indigo-400';
+        engineStatusText.textContent = 'Gemini AI (Host Key)';
+        engineModePill.textContent = 'Gemini Flash';
+        engineModePill.className = 'text-[11px] px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-medium';
+        apiAdvisoryBanner.classList.add('hidden');
+        if (serverKeyIndicator) serverKeyIndicator.classList.add('hidden');
+      } else {
+        engineStatusDot.className = 'w-1.5 h-1.5 rounded-full bg-amber-400';
+        engineStatusText.textContent = 'Free Fallback Engine';
+        engineModePill.textContent = 'Free Neural Fallback';
+        engineModePill.className = 'text-[11px] px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-400 border border-zinc-700 font-medium';
+        if (!sessionStorage.getItem('echolive_advisory_dismissed')) {
+          apiAdvisoryBanner.classList.remove('hidden');
+        }
+        if (serverKeyIndicator) serverKeyIndicator.classList.add('hidden');
+      }
+    }
+
+    // Check server configuration
+    async function checkServerConfig() {
+      try {
+        const res = await fetch('/api/config');
+        const cfg = await res.json();
+        hasServerApiKey = !!cfg.hasServerApiKey;
+        if (cfg.defaultModel && !localStorage.getItem('echolive_gemini_model')) {
+          geminiModel = cfg.defaultModel;
+        }
+      } catch (e) {
+        console.warn('Failed to check server config:', e);
+      }
+      updateEngineBadges();
+    }
+
+    // Dismiss advisory banner
+    document.getElementById('dismiss-advisory-btn').addEventListener('click', () => {
+      apiAdvisoryBanner.classList.add('hidden');
+      sessionStorage.setItem('echolive_advisory_dismissed', 'true');
+    });
+
+    document.getElementById('banner-open-settings-btn').addEventListener('click', () => {
+      openSettings();
+    });
+
+    document.getElementById('engine-status-badge').addEventListener('click', () => {
+      openSettings();
+    });
 
     // -------------------------------------------------------------
     // Dynamic QR & Network Detection
@@ -422,7 +595,6 @@
       }
 
       const listenerUrl = `${baseUrl}/listen?room=${roomCode}`;
-
       listenerUrlInput.value = listenerUrl;
 
       // Render QR Canvas
@@ -498,17 +670,26 @@
         try {
           const data = JSON.parse(event.data);
 
-          if (data.type === 'host_ready' || data.type === 'listener_update') {
+          if (data.type === 'host_ready') {
             listenerCountNum.textContent = data.count || (data.listenerCount || 0);
+            if (data.hasServerApiKey !== undefined) {
+              hasServerApiKey = data.hasServerApiKey;
+              updateEngineBadges();
+            }
 
-            // Update language counters
+            const langs = data.activeLanguages || {};
+            document.getElementById('count-gl').textContent = langs['gl'] || 0;
+            document.getElementById('count-es').textContent = langs['es'] || 0;
+          }
+
+          if (data.type === 'listener_update') {
+            listenerCountNum.textContent = data.count || (data.listenerCount || 0);
             const langs = data.activeLanguages || {};
             document.getElementById('count-gl').textContent = langs['gl'] || 0;
             document.getElementById('count-es').textContent = langs['es'] || 0;
           }
 
           if (data.type === 'transcript_preview') {
-            // Render translated output on host monitor
             if (data.isFinal) {
               appendTranslation(data.translations);
             }
@@ -543,7 +724,7 @@
       recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.lang = 'en-US';
+      recognition.lang = currentSourceLang;
 
       recognition.onstart = () => {
         isBroadcasting = true;
@@ -563,6 +744,8 @@
           }
         }
 
+        const sourceLangCode = getSourceLangCode();
+
         // Show live interim in box
         if (interimTranscript) {
           interimTextContent.textContent = interimTranscript;
@@ -571,6 +754,7 @@
             ws.send(JSON.stringify({
               type: 'interim_transcript',
               text: interimTranscript,
+              sourceLang: sourceLangCode,
               segmentId: `seg_${segmentCounter}`
             }));
           }
@@ -580,12 +764,13 @@
         if (finalTranscript.trim()) {
           segmentCounter++;
           interimTextContent.textContent = '';
-          appendEnglishPhrase(finalTranscript.trim());
+          appendSpeakerPhrase(finalTranscript.trim());
 
           if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({
               type: 'final_transcript',
               text: finalTranscript.trim(),
+              sourceLang: sourceLangCode,
               segmentId: `seg_${segmentCounter}`
             }));
           }
@@ -595,7 +780,7 @@
       recognition.onerror = (event) => {
         console.warn('Speech recognition error:', event.error);
         if (event.error === 'not-allowed') {
-          alert('Microphone access was denied. Please allow microphone permissions.');
+          alert('Microphone access was denied. Please allow microphone permissions in your browser.');
           stopBroadcast();
         }
       };
@@ -604,6 +789,7 @@
         // Auto-restart if broadcasting was not manually stopped
         if (isBroadcasting) {
           try {
+            recognition.lang = currentSourceLang;
             recognition.start();
           } catch (e) {}
         }
@@ -613,6 +799,7 @@
     function startBroadcast() {
       if (!recognition) setupSpeechRecognition();
       try {
+        recognition.lang = currentSourceLang;
         recognition.start();
       } catch (e) {
         console.warn('Recognition start exception:', e);
@@ -632,7 +819,7 @@
         micToggleBtn.className = 'w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-red-600 hover:bg-red-500 text-white flex items-center justify-center transition-all shadow-lg cursor-pointer';
         micPulseRing.classList.remove('hidden');
         micStatusTitle.textContent = 'Broadcasting LIVE';
-        micStatusDesc.textContent = 'Speech is being captured, translated, and streamed.';
+        micStatusDesc.textContent = `Speech in ${getSourceLangName()} is being captured, translated, and streamed.`;
       } else {
         micToggleBtn.className = 'w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center transition-all shadow-lg cursor-pointer';
         micPulseRing.classList.add('hidden');
@@ -653,7 +840,7 @@
     // -------------------------------------------------------------
     // Subtitle & Transcript Rendering
     // -------------------------------------------------------------
-    function appendEnglishPhrase(text) {
+    function appendSpeakerPhrase(text) {
       const placeholder = englishTranscriptBox.querySelector('.italic');
       if (placeholder) placeholder.remove();
 
@@ -729,13 +916,17 @@
     const saveSettingsBtn = document.getElementById('save-settings-btn');
     const testGeminiBtn = document.getElementById('test-gemini-btn');
     const testKeyStatus = document.getElementById('test-key-status');
+    const toggleKeyVisibilityBtn = document.getElementById('toggle-key-visibility-btn');
+    const geminiKeyInput = document.getElementById('gemini-key-input');
 
-    openSettingsBtn.addEventListener('click', () => {
-      document.getElementById('gemini-key-input').value = geminiApiKey;
+    function openSettings() {
+      geminiKeyInput.value = geminiApiKey;
       document.getElementById('gemini-model-select').value = geminiModel;
       testKeyStatus.classList.add('hidden');
       settingsModal.classList.remove('hidden');
-    });
+    }
+
+    openSettingsBtn.addEventListener('click', openSettings);
 
     function closeSettings() {
       settingsModal.classList.add('hidden');
@@ -744,19 +935,23 @@
     closeSettingsBtn.addEventListener('click', closeSettings);
     cancelSettingsBtn.addEventListener('click', closeSettings);
 
+    toggleKeyVisibilityBtn.addEventListener('click', () => {
+      if (geminiKeyInput.type === 'password') {
+        geminiKeyInput.type = 'text';
+        toggleKeyVisibilityBtn.textContent = '🔒';
+      } else {
+        geminiKeyInput.type = 'password';
+        toggleKeyVisibilityBtn.textContent = '👁️';
+      }
+    });
+
     saveSettingsBtn.addEventListener('click', () => {
-      geminiApiKey = document.getElementById('gemini-key-input').value.trim();
+      geminiApiKey = geminiKeyInput.value.trim();
       geminiModel = document.getElementById('gemini-model-select').value;
       localStorage.setItem('echolive_gemini_key', geminiApiKey);
       localStorage.setItem('echolive_gemini_model', geminiModel);
 
-      if (geminiApiKey) {
-        engineModePill.textContent = 'Gemini Flash';
-        engineModePill.className = 'text-[11px] px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-medium';
-      } else {
-        engineModePill.textContent = 'Free Engine';
-        engineModePill.className = 'text-[11px] px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-400 border border-zinc-700 font-medium';
-      }
+      updateEngineBadges();
 
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({
@@ -770,31 +965,37 @@
     });
 
     testGeminiBtn.addEventListener('click', async () => {
-      const key = document.getElementById('gemini-key-input').value.trim();
+      const key = geminiKeyInput.value.trim();
       const model = document.getElementById('gemini-model-select').value;
+      const sourceLang = getSourceLangCode();
 
-      if (!key) {
+      if (!key && !hasServerApiKey) {
         testKeyStatus.className = 'text-xs p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400';
-        testKeyStatus.textContent = 'Please enter an API key to test.';
+        testKeyStatus.textContent = 'Please enter an API key to test, or configure GEMINI_API_KEY in your server environment.';
         testKeyStatus.classList.remove('hidden');
         return;
       }
 
       testKeyStatus.className = 'text-xs p-3 rounded-xl bg-zinc-800 text-zinc-300';
-      testKeyStatus.textContent = 'Testing connection with Gemini API...';
+      testKeyStatus.textContent = 'Testing connection with Gemini AI API...';
       testKeyStatus.classList.remove('hidden');
 
       try {
         const res = await fetch('/api/test-gemini', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ apiKey: key, model })
+          body: JSON.stringify({ apiKey: key, model, sourceLang })
         });
         const data = await res.json();
 
         if (data.success) {
-          testKeyStatus.className = 'text-xs p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400';
-          testKeyStatus.innerHTML = `<strong>Success!</strong> Gemini translated: <em>"${data.result.gl}"</em>`;
+          testKeyStatus.className = 'text-xs p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 space-y-1';
+          testKeyStatus.innerHTML = `
+            <div class="font-bold text-emerald-400">✅ Gemini Translation Successful!</div>
+            <div class="text-[11px] text-zinc-300">Model: <code>${escapeHtml(model)}</code></div>
+            <div class="text-[11px] text-zinc-200">🔵 <strong>Galego:</strong> "${escapeHtml(data.result.gl || '')}"</div>
+            <div class="text-[11px] text-zinc-200">🇪🇸 <strong>Castelán:</strong> "${escapeHtml(data.result.es || '')}"</div>
+          `;
         } else {
           testKeyStatus.className = 'text-xs p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400';
           testKeyStatus.textContent = `Error: ${data.error || 'Connection failed'}`;
@@ -818,6 +1019,7 @@
 
     // Boot
     loadNetworkInfo();
+    checkServerConfig();
     connectWebSocket();
     setupSpeechRecognition();
   </script>

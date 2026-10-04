@@ -13,15 +13,17 @@ Listeners connect instantly by scanning a dynamic QR code on mobile or desktop, 
 - **Immediate Cleanup:** When the host ends the session or closes their browser tab, all connected WebSockets are terminated and room data is immediately purged.
 - **Grace Period:** Includes a 15-second reconnection grace period in case the host accidentally refreshes their browser.
 
-### 2. Dual-Engine Translation Pipeline (Native & Gemini Flash Hybrid)
-- **Speech Capture:** Host captures English (`en-US`) continuous speech using the native Web Speech API (`SpeechRecognition` / `webkitSpeechRecognition`) with real-time interim tentative captions and confirmed final phrases.
-- **Free / Native Mode (Default):** Zero setup required. Uses high-speed server-side neural translation fallback without requiring API keys or third-party setup.
-- **Gemini 2.5 Flash Mode (High Precision):** Host can provide a `GEMINI_API_KEY` in the studio settings modal. Translates spoken segments with low latency and literary-grade conversational accuracy for Galician and Spanish in a single unified prompt.
+### 2. Multi-Tier Resilient Translation Pipeline (Gemini AI + Free Neural Fallback)
+- **Speech Capture & Multilingual Source:** Host can speak in English (`en-US`), Spanish/Castelán (`es-ES`), Galician/Galego (`gl-ES`), Portuguese (`pt-PT`), French (`fr-FR`), or German (`de-DE`). Continuous speech is captured using Web Speech API with real-time interim tentative captions and confirmed final phrases.
+- **External API (Gemini 2.0 Flash - Strongly Recommended):** Configure `GEMINI_API_KEY` in your `.env` file, server environment (Render dashboard), or Host settings modal. Uses Google's ultra-low latency `gemini-2.0-flash` simultaneous conference interpreter for literary-grade contextual translations.
+  - *Get a free API key in 1 click:* [Google AI Studio](https://aistudio.google.com/apikey)
+- **Cloud-Safe Neural Fallback (MyMemory + Google GTX):** Automatic zero-configuration fallback ensures translation continues to function even if no API key is provided, bypassing cloud datacenter IP restrictions (e.g. Render / AWS).
 - **Extensible Language Schema:** Modifying or adding languages is as simple as adding an item to `SUPPORTED_LANGUAGES`:
   ```javascript
   const SUPPORTED_LANGUAGES = [
     { code: 'gl', name: 'Galego', flag: '🔵' },
     { code: 'es', name: 'Castelán', flag: '🇪🇸' },
+    { code: 'en', name: 'English', flag: '🇬🇧' },
     { code: 'pt', name: 'Português', flag: '🇵🇹' },
     { code: 'fr', name: 'Français', flag: '🇫🇷' },
     { code: 'de', name: 'Deutsch', flag: '🇩🇪' }
@@ -104,16 +106,28 @@ To test EchoLive with your computer as the host and your smartphone as a listene
 
 ---
 
-## ⚙️ Configuring Gemini 2.5 Flash Mode
+## ⚙️ Configuring Gemini AI (Recommended for Cloud Hosting & 100% Reliability)
 
-While EchoLive works out of the box with zero API keys in **Free Mode**, you can activate Gemini 2.5 Flash for top-tier simultaneous interpretation:
+While EchoLive includes zero-configuration neural fallbacks (MyMemory and Google GTX), configuring a **Google Gemini API Key** is strongly recommended for production, conference environments, and cloud hosting (like Render):
 
+### Option A: Server-Wide Configuration (Best for Render / Deployments)
+1. Get a free API key at [Google AI Studio](https://aistudio.google.com/apikey).
+2. Set the environment variable:
+   - **On Render:** In your service dashboard under **Environment Variables**, add `GEMINI_API_KEY` and your key.
+   - **Locally:** Create a `.env` file (copy from `.env.example`):
+     ```env
+     GEMINI_API_KEY=AIzaSy...
+     GEMINI_MODEL=gemini-2.0-flash
+     ```
+3. Restart or deploy the server. All broadcasts and rooms will automatically use Gemini 2.0 Flash without any speaker needing to enter an API key!
+
+### Option B: Host Browser Configuration
 1. On the host screen (`/host`), click the **Settings (⚙️)** icon in the top header.
-2. Enter your `GEMINI_API_KEY` (get one from [Google AI Studio](https://aistudio.google.com/)).
-3. Select **Gemini 2.5 Flash**.
-4. Click **"Test Connection"** to verify your key.
+2. Enter your `GEMINI_API_KEY`.
+3. Select **Gemini 2.0 Flash** (or `gemini-1.5-flash`).
+4. Click **"Test Connection"** to verify translation to Galego and Castelán.
 5. Click **"Save Settings"**.
-6. The engine badge changes to **"Gemini Flash"**. Spoken phrases will now be translated with Gemini's advanced contextual awareness.
+6. The engine badge changes to **"Gemini AI"**. Spoken phrases will now be translated with literary conversational accuracy and natural cadence.
 
 ---
 
